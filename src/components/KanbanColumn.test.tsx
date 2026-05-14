@@ -2,13 +2,18 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect } from 'vitest'
 import { useReducer } from 'react'
+import { DndContext } from '@dnd-kit/core'
 import { SAMPLE_BOARD } from '../lib/board'
 import { boardReducer } from '../lib/boardReducer'
 import { KanbanColumn } from './KanbanColumn'
 
 function Harness({ columnId }: { columnId: string }) {
   const [board, dispatch] = useReducer(boardReducer, SAMPLE_BOARD)
-  return <KanbanColumn board={board} columnId={columnId} dispatch={dispatch} />
+  return (
+    <DndContext>
+      <KanbanColumn board={board} columnId={columnId} dispatch={dispatch} />
+    </DndContext>
+  )
 }
 
 beforeEach(() => {

@@ -264,15 +264,30 @@
   padding: 0.7rem 0.8rem;
   box-shadow: var(--shadow-sm);
   position: relative;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: manipulation;
   transition:
-    transform 0.12s ease,
     box-shadow 0.12s ease,
     border-color 0.12s ease;
 }
 
+.kanban-card.is-dragging {
+  cursor: grabbing;
+}
+
+.kanban-card.is-overlay {
+  cursor: grabbing;
+  box-shadow: 0 12px 24px rgba(30, 27, 58, 0.22);
+  transform: rotate(2deg);
+  border-color: var(--primary);
+}
+
+.kanban-column.is-drop-target {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
 .kanban-card:hover {
-  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
   border-color: var(--border-strong);
 }

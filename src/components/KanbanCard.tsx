@@ -1,16 +1,43 @@
-import { useState, type Dispatch, type FormEvent } from 'react'
-import type { Card } from '../lib/board'
+import {
+  useState,
+  type CSSProperties,
+  type Dispatch,
+  type FormEvent,
+} from 'react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import type { Card, ColumnId } from '../lib/board'
 import type { BoardAction } from '../lib/boardReducer'
 
 interface KanbanCardProps {
   card: Card
+  columnId: ColumnId
   dispatch: Dispatch<BoardAction>
+  /** Disable drag handlers (e.g. when rendered inside a DragOverlay). */
+  isOverlay?: boolean
 }
 
-export function KanbanCard({ card, dispatch }: KanbanCardProps) {
+export function KanbanCard({
+  card,
+  columnId,
+  dispatch,
+  isOverlay = false,
+}: KanbanCardProps) {
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
+
+  const sortable = useSortable({
+    id: card.id,
+    data: { type: 'card', columnId, cardId: card.id },
+    disabled: editing || isOverlay,
+  })
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(sortable.transform),
+    transition: sortable.transition,
+    opacity: sortable.isDragging ? 0.4 : 1,
+  }
 
   const startEditing = () => {
     setTitle(card.title)
@@ -42,6 +69,8 @@ export function KanbanCard({ card, dispatch }: KanbanCardProps) {
   if (editing) {
     return (
       <form
+        ref={sortable.setNodeRef}
+        style={style}
         className="kanban-card kanban-card-edit"
         onSubmit={save}
         data-testid={`card-${card.id}`}
@@ -83,7 +112,11 @@ export function KanbanCard({ card, dispatch }: KanbanCardProps) {
 
   return (
     <article
-      className="kanban-card"
+      ref={isOverlay ? undefined : sortable.setNodeRef}
+      style={isOverlay ? undefined : style}
+      className={`kanban-card ${isOverlay ? 'is-overlay' : ''} ${
+        sortable.isDragging ? 'is-dragging' : ''
+      }`}
       data-testid={`card-${card.id}`}
       onClick={startEditing}
       onKeyDown={(e) => {
@@ -95,6 +128,8 @@ export function KanbanCard({ card, dispatch }: KanbanCardProps) {
       role="button"
       tabIndex={0}
       aria-label={`Edit card: ${card.title}`}
+      {...(isOverlay ? {} : sortable.attributes)}
+      {...(isOverlay ? {} : sortable.listeners)}
     >
       <button
         type="button"
@@ -103,6 +138,7 @@ export function KanbanCard({ card, dispatch }: KanbanCardProps) {
           e.stopPropagation()
           remove()
         }}
+        onPointerDown={(e) => e.stopPropagation()}
         aria-label={`Delete card: ${card.title}`}
         title="Delete card"
       >

@@ -1,4 +1,9 @@
 import { useState, type Dispatch, type FormEvent } from 'react'
+import { useDroppable } from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import type { Board, ColumnId } from '../lib/board'
 import { cardsInColumn } from '../lib/board'
 import type { BoardAction } from '../lib/boardReducer'
@@ -16,6 +21,11 @@ export function KanbanColumn({ board, columnId, dispatch }: KanbanColumnProps) {
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
 
+  const { setNodeRef, isOver } = useDroppable({
+    id: columnId,
+    data: { type: 'column', columnId },
+  })
+
   if (!column) return null
 
   const submitAdd = (e: FormEvent) => {
@@ -32,7 +42,8 @@ export function KanbanColumn({ board, columnId, dispatch }: KanbanColumnProps) {
 
   return (
     <section
-      className="kanban-column"
+      ref={setNodeRef}
+      className={`kanban-column ${isOver ? 'is-drop-target' : ''}`}
       data-testid={`column-${columnId}`}
       aria-label={`Column ${column.name}`}
     >
@@ -44,12 +55,22 @@ export function KanbanColumn({ board, columnId, dispatch }: KanbanColumnProps) {
       </header>
 
       <div className="kanban-column-body">
-        {cards.length === 0 && !adding && (
-          <p className="kanban-column-empty">No cards yet.</p>
-        )}
-        {cards.map((card) => (
-          <KanbanCard key={card.id} card={card} dispatch={dispatch} />
-        ))}
+        <SortableContext
+          items={column.cardIds}
+          strategy={verticalListSortingStrategy}
+        >
+          {cards.length === 0 && !adding && (
+            <p className="kanban-column-empty">Drop here or add a card.</p>
+          )}
+          {cards.map((card) => (
+            <KanbanCard
+              key={card.id}
+              card={card}
+              columnId={columnId}
+              dispatch={dispatch}
+            />
+          ))}
+        </SortableContext>
         {adding ? (
           <form className="add-card-form" onSubmit={submitAdd}>
             <input
