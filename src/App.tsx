@@ -18,6 +18,7 @@ import { CardDetailModal } from './components/CardDetailModal'
 import { ShortcutsOverlay } from './components/ShortcutsOverlay'
 import { SprintControl } from './components/SprintControl'
 import { BacklogView } from './components/BacklogView'
+import { BurndownChart } from './components/BurndownChart'
 import type { Board, Card, CardId, ColumnId } from './lib/board'
 import { activeBoard } from './lib/workspace'
 import {
@@ -245,19 +246,29 @@ function App() {
 
       <main className="app-main">
         {view === 'board' ? (
-          <KanbanBoard
-            board={board}
-            dispatch={dispatch}
-            query={query}
-            filter={filter}
-            onOpenCard={setOpenCardId}
-            onExport={handleExport}
-            onImport={handleImportClick}
-            scopeSprintId={board.activeSprintId ?? null}
-          />
+          <>
+            {board.activeSprintId &&
+              board.sprints?.[board.activeSprintId] && (
+                <BurndownChart
+                  board={board}
+                  sprint={board.sprints[board.activeSprintId]}
+                />
+              )}
+            <KanbanBoard
+              board={board}
+              dispatch={dispatch}
+              query={query}
+              filter={filter}
+              onOpenCard={setOpenCardId}
+              onExport={handleExport}
+              onImport={handleImportClick}
+              scopeSprintId={board.activeSprintId ?? null}
+            />
+          </>
         ) : (
           <BacklogView
             board={board}
+            dispatch={dispatch}
             query={query}
             filter={filter}
             onOpenCard={setOpenCardId}
@@ -317,6 +328,7 @@ function App() {
           board={board}
           dispatch={dispatch}
           onClose={() => setOpenCardId(null)}
+          onNavigate={(id) => setOpenCardId(id)}
         />
       )}
 

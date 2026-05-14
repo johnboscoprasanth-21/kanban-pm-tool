@@ -450,6 +450,79 @@ describe('boardReducer · comments', () => {
   })
 })
 
+describe('boardReducer · links', () => {
+  it('ADD_LINK creates the forward link and the reciprocal', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_LINK',
+      cardId: 'c1',
+      linkType: 'blocks',
+      targetCardId: 'c2',
+    })
+    expect(next.cards.c1.links).toEqual([
+      { type: 'blocks', targetCardId: 'c2' },
+    ])
+    expect(next.cards.c2.links).toEqual([
+      { type: 'blocked-by', targetCardId: 'c1' },
+    ])
+  })
+
+  it('ADD_LINK is idempotent', () => {
+    const once = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_LINK',
+      cardId: 'c1',
+      linkType: 'blocks',
+      targetCardId: 'c2',
+    })
+    const twice = boardReducer(once, {
+      type: 'ADD_LINK',
+      cardId: 'c1',
+      linkType: 'blocks',
+      targetCardId: 'c2',
+    })
+    expect(twice).toBe(once)
+  })
+
+  it('relates-to is reciprocal with relates-to', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_LINK',
+      cardId: 'c1',
+      linkType: 'relates-to',
+      targetCardId: 'c3',
+    })
+    expect(next.cards.c3.links?.[0]).toEqual({
+      type: 'relates-to',
+      targetCardId: 'c1',
+    })
+  })
+
+  it('REMOVE_LINK clears both endpoints', () => {
+    const linked = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_LINK',
+      cardId: 'c1',
+      linkType: 'blocks',
+      targetCardId: 'c2',
+    })
+    const unlinked = boardReducer(linked, {
+      type: 'REMOVE_LINK',
+      cardId: 'c1',
+      linkType: 'blocks',
+      targetCardId: 'c2',
+    })
+    expect(unlinked.cards.c1.links).toBeUndefined()
+    expect(unlinked.cards.c2.links).toBeUndefined()
+  })
+
+  it('refuses self-links', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_LINK',
+      cardId: 'c1',
+      linkType: 'blocks',
+      targetCardId: 'c1',
+    })
+    expect(next).toBe(SAMPLE_BOARD)
+  })
+})
+
 describe('loadBoard / saveBoard', () => {
   it('round-trips a board through localStorage', () => {
     saveBoard(SAMPLE_BOARD)

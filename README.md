@@ -21,6 +21,7 @@ A Trello/Jira-style project management tool, built **in phases**, each phase aut
 | **7 · Pro workflows** | Column drag-to-reorder, Export/Import board JSON, card activity history, `?` shortcuts overlay, mobile responsive | ✅ live |
 | **8 · Jira essentials** | Issue keys (KAN-N), issue types (Story/Task/Bug/Epic), story points, assignees, subtask checklists | ✅ live |
 | **9 · Agile + collab** | Sprints (planning/active/completed), Backlog view, comments thread per card | ✅ live |
+| **10 · Insights + links** | Sprint burndown chart, linked issues (blocks/blocked-by/relates-to), bulk actions in backlog | ✅ live |
 
 Every push to `main` triggers a Lint → Test → Build → Deploy pipeline; the live URL above always reflects the latest green commit on `main`.
 

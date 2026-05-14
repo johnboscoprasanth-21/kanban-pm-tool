@@ -6,6 +6,7 @@
  */
 
 import {
+  LINK_TYPE_META,
   SAMPLE_BOARD,
   appendHistory,
   inferKeyPrefix,
@@ -15,6 +16,8 @@ import {
   type CardId,
   type ColumnId,
   type Comment,
+  type IssueLink,
+  type LinkType,
   type Sprint,
   type SprintId,
 } from './board'
@@ -54,6 +57,18 @@ export type BoardAction =
       cardId: CardId
       authorId: AssigneeId
       text: string
+    }
+  | {
+      type: 'ADD_LINK'
+      cardId: CardId
+      linkType: LinkType
+      targetCardId: CardId
+    }
+  | {
+      type: 'REMOVE_LINK'
+      cardId: CardId
+      linkType: LinkType
+      targetCardId: CardId
     }
   | { type: 'RESET' }
 
@@ -389,6 +404,90 @@ export function boardReducer(state: Board, action: BoardAction): Board {
             ...card,
             comments: [...(card.comments ?? []), comment],
           },
+        },
+      }
+    }
+
+    case 'ADD_LINK': {
+      const source = state.cards[action.cardId]
+      const target = state.cards[action.targetCardId]
+      if (!source || !target) return state
+      if (action.cardId === action.targetCardId) return state
+      const reciprocal = LINK_TYPE_META[action.linkType].reciprocal
+      const sourceLinks = source.links ?? []
+      const targetLinks = target.links ?? []
+      // Idempotent: skip if the forward link already exists.
+      if (
+        sourceLinks.some(
+          (l) =>
+            l.type === action.linkType && l.targetCardId === action.targetCardId,
+        )
+      ) {
+        return state
+      }
+      const newSourceLink: IssueLink = {
+        type: action.linkType,
+        targetCardId: action.targetCardId,
+      }
+      const newTargetLink: IssueLink = {
+        type: reciprocal,
+        targetCardId: action.cardId,
+      }
+      // Also skip the reciprocal if it somehow exists already.
+      const targetHasReciprocal = targetLinks.some(
+        (l) => l.type === reciprocal && l.targetCardId === action.cardId,
+      )
+      return {
+        ...state,
+        cards: {
+          ...state.cards,
+          [action.cardId]: {
+            ...source,
+            links: [...sourceLinks, newSourceLink],
+          },
+          [action.targetCardId]: {
+            ...target,
+            links: targetHasReciprocal
+              ? targetLinks
+              : [...targetLinks, newTargetLink],
+          },
+        },
+      }
+    }
+
+    case 'REMOVE_LINK': {
+      const source = state.cards[action.cardId]
+      const target = state.cards[action.targetCardId]
+      if (!source || !target) return state
+      const reciprocal = LINK_TYPE_META[action.linkType].reciprocal
+      const newSourceLinks = (source.links ?? []).filter(
+        (l) =>
+          !(l.type === action.linkType && l.targetCardId === action.targetCardId),
+      )
+      const newTargetLinks = (target.links ?? []).filter(
+        (l) =>
+          !(l.type === reciprocal && l.targetCardId === action.cardId),
+      )
+      return {
+        ...state,
+        cards: {
+          ...state.cards,
+          [action.cardId]:
+            newSourceLinks.length > 0
+              ? { ...source, links: newSourceLinks }
+              : (() => {
+                  const c = { ...source }
+                  delete c.links
+                  return c
+                })(),
+          [action.targetCardId]:
+            newTargetLinks.length > 0
+              ? { ...target, links: newTargetLinks }
+              : (() => {
+                  const c = { ...target }
+                  delete c.links
+                  return c
+                })(),
         },
       }
     }

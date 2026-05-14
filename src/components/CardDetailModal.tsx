@@ -9,6 +9,8 @@ import {
   ISSUE_TYPES,
   ISSUE_TYPE_IDS,
   LABELS,
+  LINK_TYPES,
+  LINK_TYPE_META,
   POINT_OPTIONS,
   PRIORITIES,
   PRIORITY_META,
@@ -17,10 +19,12 @@ import {
   type AssigneeId,
   type Board,
   type Card,
+  type CardId,
   type ChecklistItem,
   type ColumnId,
   type IssueType,
   type LabelId,
+  type LinkType,
   type Priority,
   type SprintId,
 } from '../lib/board'
@@ -33,6 +37,8 @@ interface CardDetailModalProps {
   board: Board
   dispatch: Dispatch<BoardAction>
   onClose: () => void
+  /** Click-through on a linked issue jumps to that card. */
+  onNavigate?: (cardId: CardId) => void
 }
 
 function epochToInputValue(ms: number | undefined): string {
@@ -61,6 +67,7 @@ export function CardDetailModal({
   board,
   dispatch,
   onClose,
+  onNavigate,
 }: CardDetailModalProps) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
@@ -78,6 +85,8 @@ export function CardDetailModal({
   const [newSubtask, setNewSubtask] = useState('')
   const [newComment, setNewComment] = useState('')
   const [commentAuthor, setCommentAuthor] = useState<AssigneeId>('jbp')
+  const [linkType, setLinkType] = useState<LinkType>('blocks')
+  const [linkTarget, setLinkTarget] = useState<CardId | ''>('')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -165,6 +174,26 @@ export function CardDetailModal({
       text,
     })
     setNewComment('')
+  }
+
+  const addLink = () => {
+    if (!linkTarget || linkTarget === card.id) return
+    dispatch({
+      type: 'ADD_LINK',
+      cardId: card.id,
+      linkType,
+      targetCardId: linkTarget,
+    })
+    setLinkTarget('')
+  }
+
+  const removeLink = (lt: LinkType, targetCardId: CardId) => {
+    dispatch({
+      type: 'REMOVE_LINK',
+      cardId: card.id,
+      linkType: lt,
+      targetCardId,
+    })
   }
 
   const checklistDone = checklist.filter((i) => i.done).length
@@ -529,6 +558,104 @@ export function CardDetailModal({
               </ul>
             </div>
           )}
+
+          <div className="modal-field">
+            <span className="modal-field-label">
+              Links
+              {card.links && card.links.length > 0 && (
+                <span className="checklist-progress-inline">
+                  {' '}
+                  · {card.links.length}
+                </span>
+              )}
+            </span>
+            {card.links && card.links.length > 0 && (
+              <ul className="links-list">
+                {card.links.map((l) => {
+                  const target = board.cards[l.targetCardId]
+                  const meta = LINK_TYPE_META[l.type]
+                  return (
+                    <li key={`${l.type}:${l.targetCardId}`} className="link-item">
+                      <span
+                        className="link-type-pill"
+                        style={{
+                          background: meta.color,
+                          color: '#fff',
+                        }}
+                      >
+                        {meta.label}
+                      </span>
+                      {target ? (
+                        <button
+                          type="button"
+                          className="link-target"
+                          onClick={() => onNavigate?.(l.targetCardId)}
+                          aria-label={`Open ${target.key ?? ''} ${target.title}`}
+                        >
+                          {target.key && (
+                            <span className="card-key">{target.key}</span>
+                          )}
+                          <span className="link-target-title">
+                            {target.title}
+                          </span>
+                        </button>
+                      ) : (
+                        <span className="link-target is-missing">
+                          (deleted card)
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="bs-icon-btn bs-icon-danger link-remove"
+                        onClick={() => removeLink(l.type, l.targetCardId)}
+                        aria-label="Remove link"
+                        title="Remove link"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            <div className="link-compose">
+              <select
+                className="modal-select"
+                value={linkType}
+                onChange={(e) => setLinkType(e.target.value as LinkType)}
+                aria-label="Link type"
+              >
+                {LINK_TYPES.map((lt) => (
+                  <option key={lt} value={lt}>
+                    {LINK_TYPE_META[lt].label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="modal-select link-target-select"
+                value={linkTarget}
+                onChange={(e) => setLinkTarget(e.target.value)}
+                aria-label="Link target card"
+              >
+                <option value="">Select a card…</option>
+                {Object.values(board.cards)
+                  .filter((c) => c.id !== card.id)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.key ? `${c.key} — ${c.title}` : c.title}
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={addLink}
+                disabled={!linkTarget}
+              >
+                Link
+              </button>
+            </div>
+          </div>
 
           <div className="modal-field">
             <span className="modal-field-label">

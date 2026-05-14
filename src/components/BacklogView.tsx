@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type Dispatch, type ChangeEvent } from 'react'
 import {
   ISSUE_TYPES,
   PRIORITY_META,
@@ -8,13 +8,16 @@ import {
   type Card,
   type CardId,
 } from '../lib/board'
+import type { BoardAction } from '../lib/boardReducer'
 import { matchesQuery } from '../lib/matchesQuery'
 import { matchesFilter, type Filter } from '../lib/filters'
+import { BulkActionBar } from './BulkActionBar'
 
 type SortKey = 'created' | 'priority' | 'points' | 'type' | 'key'
 
 interface BacklogViewProps {
   board: Board
+  dispatch: Dispatch<BoardAction>
   query?: string
   filter?: Filter
   onOpenCard?: (cardId: CardId) => void
@@ -27,12 +30,14 @@ function priorityRank(card: Card): number {
 
 export function BacklogView({
   board,
+  dispatch,
   query = '',
   filter,
   onOpenCard,
 }: BacklogViewProps) {
   const [sortKey, setSortKey] = useState<SortKey>('created')
   const [sortDesc, setSortDesc] = useState(true)
+  const [selected, setSelected] = useState<Set<CardId>>(() => new Set())
 
   const items = useMemo(() => {
     const all = Object.values(board.cards).filter((c) => !c.sprintId)
@@ -77,6 +82,26 @@ export function BacklogView({
   const arrow = (key: SortKey) =>
     sortKey === key ? (sortDesc ? ' ↓' : ' ↑') : ''
 
+  const allSelected =
+    items.length > 0 && items.every((c) => selected.has(c.id))
+
+  const toggleAll = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelected(new Set(items.map((c) => c.id)))
+    } else {
+      setSelected(new Set())
+    }
+  }
+
+  const toggleOne = (id: CardId) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   return (
     <section className="backlog" aria-label="Backlog">
       <header className="backlog-head">
@@ -99,6 +124,14 @@ export function BacklogView({
         <table className="backlog-table">
           <thead>
             <tr>
+              <th className="backlog-check-col">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  aria-label="Select all visible cards"
+                />
+              </th>
               <th onClick={() => onHeaderClick('key')}>Key{arrow('key')}</th>
               <th onClick={() => onHeaderClick('type')}>
                 Type{arrow('type')}
@@ -117,21 +150,33 @@ export function BacklogView({
             {items.map((c) => {
               const typeMeta = c.type ? ISSUE_TYPES[c.type] : null
               const aMeta = c.assignee ? TEAM[c.assignee] : null
+              const isSelected = selected.has(c.id)
               return (
                 <tr
                   key={c.id}
-                  className="backlog-row"
+                  className={`backlog-row ${isSelected ? 'is-selected' : ''}`}
                   onClick={() => onOpenCard?.(c.id)}
                   tabIndex={0}
                   role="button"
                   aria-label={`Open card: ${c.key ? c.key + ' — ' : ''}${c.title}`}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.key === 'Enter') {
                       e.preventDefault()
                       onOpenCard?.(c.id)
                     }
                   }}
                 >
+                  <td
+                    className="backlog-check-col"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleOne(c.id)}
+                      aria-label={`Select ${c.key ?? c.title}`}
+                    />
+                  </td>
                   <td>
                     {c.key && <span className="card-key">{c.key}</span>}
                   </td>
@@ -177,6 +222,13 @@ export function BacklogView({
           </tbody>
         </table>
       )}
+
+      <BulkActionBar
+        board={board}
+        selectedIds={Array.from(selected)}
+        dispatch={dispatch}
+        onClear={() => setSelected(new Set())}
+      />
     </section>
   )
 }

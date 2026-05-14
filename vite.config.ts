@@ -29,7 +29,7 @@ export default defineConfig({
     __COMMIT_SHA__: JSON.stringify(
       (process.env.GITHUB_SHA ?? 'local-dev').slice(0, 7),
     ),
-    __APP_PHASE__: JSON.stringify('Phase 9 · Agile + Collab'),
+    __APP_PHASE__: JSON.stringify('Phase 10 · Insights + Links'),
   },
   test: {
     environment: 'happy-dom',

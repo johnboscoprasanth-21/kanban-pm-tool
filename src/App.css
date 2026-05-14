@@ -2141,6 +2141,230 @@
   }
 }
 
+/* ── Phase 10: Burndown chart ────────────────────────── */
+.burndown {
+  max-width: 1320px;
+  margin: 0 auto 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem 0.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.burndown-head {
+  margin-bottom: 0.5rem;
+}
+
+.burndown-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.burndown-trend {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.burndown-trend.is-on-track {
+  background: var(--rag-green-bg, #dcfce7);
+  color: #16a34a;
+}
+
+.burndown-trend.is-behind {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.burndown-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.burndown-sub strong {
+  color: var(--text);
+}
+
+.burndown-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+  color: var(--text-soft);
+}
+
+/* ── Linked issues ───────────────────────────────────── */
+.links-list {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.link-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.link-type-pill {
+  flex: 0 0 auto;
+  padding: 0.1rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.link-target {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text);
+  padding: 0.15rem 0;
+}
+
+.link-target:hover .link-target-title {
+  text-decoration: underline;
+}
+
+.link-target-title {
+  color: var(--text);
+}
+
+.link-target.is-missing {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.link-remove {
+  flex: 0 0 auto;
+}
+
+.link-compose {
+  display: grid;
+  grid-template-columns: minmax(130px, 160px) 1fr auto;
+  gap: 0.4rem;
+}
+
+.link-target-select {
+  font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .link-compose {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Bulk action bar (Backlog) ───────────────────────── */
+.bulk-bar {
+  position: sticky;
+  bottom: 1rem;
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--text);
+  color: #fff;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 14, 26, 0.35);
+  flex-wrap: wrap;
+}
+
+.bulk-count {
+  font-weight: 700;
+  margin-right: 0.5rem;
+}
+
+.bulk-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.bulk-action .modal-select {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+}
+
+.bulk-action .modal-select option {
+  color: var(--text);
+}
+
+.bulk-label {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+.bulk-bar .btn-ghost {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  background: transparent;
+}
+
+.bulk-bar .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.bulk-bar .btn-danger {
+  color: #fca5a5;
+  border-color: rgba(252, 165, 165, 0.35);
+}
+
+.bulk-bar .btn-danger:hover {
+  background: rgba(220, 38, 38, 0.25);
+  color: #fff;
+}
+
+/* Backlog selection visuals */
+.backlog-check-col {
+  width: 2rem;
+  text-align: center;
+}
+
+.backlog-row.is-selected {
+  background: var(--primary-soft);
+}
+
+.backlog-row.is-selected:hover {
+  background: var(--primary-soft);
+}
+
 /* ── Utility ─────────────────────────────────────────── */
 .visually-hidden {
   position: absolute;

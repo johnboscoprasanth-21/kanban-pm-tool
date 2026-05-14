@@ -49,6 +49,32 @@ export interface Comment {
   at: number
 }
 
+export type LinkType = 'blocks' | 'blocked-by' | 'relates-to'
+
+export interface IssueLink {
+  type: LinkType
+  targetCardId: CardId
+}
+
+export const LINK_TYPES: LinkType[] = ['blocks', 'blocked-by', 'relates-to']
+
+export const LINK_TYPE_META: Record<
+  LinkType,
+  { label: string; color: string; reciprocal: LinkType }
+> = {
+  blocks: { label: 'Blocks', color: '#dc2626', reciprocal: 'blocked-by' },
+  'blocked-by': {
+    label: 'Blocked by',
+    color: '#f59e0b',
+    reciprocal: 'blocks',
+  },
+  'relates-to': {
+    label: 'Relates to',
+    color: '#6b7280',
+    reciprocal: 'relates-to',
+  },
+}
+
 export interface HistoryEntry {
   /** epoch ms */
   at: number
@@ -79,6 +105,8 @@ export interface Card {
   /** Sprint membership. undefined = in the backlog. */
   sprintId?: SprintId
   comments?: Comment[]
+  // ── Phase 10: linked issues ──────────────────────────
+  links?: IssueLink[]
 }
 
 /** Preset team for the assignee dropdown. */
