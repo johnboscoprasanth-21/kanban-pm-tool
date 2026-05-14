@@ -1,9 +1,16 @@
+import { useEffect, useReducer } from 'react'
 import './App.css'
 import { IstClock } from './components/IstClock'
 import { KanbanBoard } from './components/KanbanBoard'
-import { SAMPLE_BOARD } from './lib/board'
+import { boardReducer, loadBoard, saveBoard } from './lib/boardReducer'
 
 function App() {
+  const [board, dispatch] = useReducer(boardReducer, undefined, loadBoard)
+
+  useEffect(() => {
+    saveBoard(board)
+  }, [board])
+
   return (
     <div className="app">
       <header className="app-header">
@@ -27,7 +34,7 @@ function App() {
       </header>
 
       <main className="app-main">
-        <KanbanBoard board={SAMPLE_BOARD} />
+        <KanbanBoard board={board} dispatch={dispatch} />
 
         <section className="build-card" aria-label="Build info">
           <h2>Build info</h2>

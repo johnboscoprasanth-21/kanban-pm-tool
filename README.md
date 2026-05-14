@@ -13,7 +13,7 @@ A Trello/Jira-style project management tool, built **in phases**, each phase aut
 | Phase | Scope | Status |
 |---|---|---|
 | **1 · Foundation** | Vite + React + TS scaffold, CI/CD pipeline, theme, static board with 4 columns + sample cards, IST clock, build info | ✅ live |
-| **2 · Card CRUD** | Add / edit / delete cards inline; localStorage persistence | ⏳ next |
+| **2 · Card CRUD** | Add / edit / delete cards inline; localStorage persistence | ✅ live |
 | **3 · Drag-and-drop** | `@dnd-kit/core` — drag cards between columns, reorder within | ⏳ |
 | **4 · Multiple boards** | Board switcher, create / rename / delete boards | ⏳ |
 | **5 · Polish** | Search, labels, priority, due dates (IST), dark mode | ⏳ |
