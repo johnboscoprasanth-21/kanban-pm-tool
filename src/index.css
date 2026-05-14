@@ -12,6 +12,12 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+[data-theme='dark'] {
+  color-scheme: dark;
+  color: #ece8fa;
+  background-color: #0f0e1a;
+}
+
 html,
 body,
 #root {

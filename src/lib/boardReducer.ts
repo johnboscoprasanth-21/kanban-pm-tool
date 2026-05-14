@@ -5,7 +5,13 @@
  * (drag-and-drop adds MOVE_CARD and REORDER_CARD without restructuring).
  */
 
-import { SAMPLE_BOARD, type Board, type CardId, type ColumnId } from './board'
+import {
+  SAMPLE_BOARD,
+  type Board,
+  type Card,
+  type CardId,
+  type ColumnId,
+} from './board'
 
 export const STORAGE_KEY = 'kanban-pm-tool.board.v1'
 
@@ -14,7 +20,7 @@ export type BoardAction =
   | {
       type: 'UPDATE_CARD'
       cardId: CardId
-      patch: Partial<{ title: string; description: string }>
+      patch: Partial<Omit<Card, 'id'>>
     }
   | { type: 'DELETE_CARD'; cardId: CardId }
   | {
@@ -58,11 +64,23 @@ export function boardReducer(state: Board, action: BoardAction): Board {
     case 'UPDATE_CARD': {
       const existing = state.cards[action.cardId]
       if (!existing) return state
-      const next = { ...existing, ...action.patch }
+      const next: Card = { ...existing, ...action.patch }
       if (typeof next.title === 'string') next.title = next.title.trim()
-      // Drop empty description so we don't render an empty <p>.
+      // Drop empty/blank optional fields so we don't render empty UI.
       if (next.description !== undefined && next.description.trim() === '') {
-        delete (next as { description?: string }).description
+        delete next.description
+      }
+      if (next.labels !== undefined && next.labels.length === 0) {
+        delete next.labels
+      }
+      if (
+        next.dueDate !== undefined &&
+        (next.dueDate === null || Number.isNaN(next.dueDate))
+      ) {
+        delete next.dueDate
+      }
+      if (next.priority === undefined) {
+        delete next.priority
       }
       return { ...state, cards: { ...state.cards, [action.cardId]: next } }
     }

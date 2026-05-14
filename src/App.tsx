@@ -1,14 +1,17 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import './App.css'
 import { IstClock } from './components/IstClock'
 import { KanbanBoard } from './components/KanbanBoard'
 import { BoardSwitcher } from './components/BoardSwitcher'
+import { SearchBar } from './components/SearchBar'
+import { ThemeToggle } from './components/ThemeToggle'
 import { activeBoard } from './lib/workspace'
 import {
   workspaceReducer,
   loadWorkspace,
   saveWorkspace,
 } from './lib/workspaceReducer'
+import { useTheme } from './lib/useTheme'
 
 function App() {
   const [workspace, dispatch] = useReducer(
@@ -16,6 +19,8 @@ function App() {
     undefined,
     loadWorkspace,
   )
+  const [query, setQuery] = useState('')
+  const [theme, , toggleTheme] = useTheme()
 
   useEffect(() => {
     saveWorkspace(workspace)
@@ -38,16 +43,18 @@ function App() {
           </div>
         </div>
         <div className="header-right">
+          <SearchBar query={query} onChange={setQuery} />
           <BoardSwitcher workspace={workspace} dispatch={dispatch} />
           <span className="phase-pill" title="Current development phase">
             {__APP_PHASE__}
           </span>
+          <ThemeToggle theme={theme} toggle={toggleTheme} />
           <IstClock />
         </div>
       </header>
 
       <main className="app-main">
-        <KanbanBoard board={board} dispatch={dispatch} />
+        <KanbanBoard board={board} dispatch={dispatch} query={query} />
 
         <section className="build-card" aria-label="Build info">
           <h2>Build info</h2>

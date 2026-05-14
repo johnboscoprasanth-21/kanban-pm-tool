@@ -7,17 +7,25 @@ import {
 import type { Board, ColumnId } from '../lib/board'
 import { cardsInColumn } from '../lib/board'
 import type { BoardAction } from '../lib/boardReducer'
+import { matchesQuery } from '../lib/matchesQuery'
 import { KanbanCard } from './KanbanCard'
 
 interface KanbanColumnProps {
   board: Board
   columnId: ColumnId
   dispatch: Dispatch<BoardAction>
+  query?: string
 }
 
-export function KanbanColumn({ board, columnId, dispatch }: KanbanColumnProps) {
+export function KanbanColumn({
+  board,
+  columnId,
+  dispatch,
+  query = '',
+}: KanbanColumnProps) {
   const column = board.columns[columnId]
-  const cards = cardsInColumn(board, columnId)
+  const allCards = cardsInColumn(board, columnId)
+  const filtered = allCards.filter((c) => matchesQuery(c, query))
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
 
@@ -40,6 +48,11 @@ export function KanbanColumn({ board, columnId, dispatch }: KanbanColumnProps) {
     setAdding(false)
   }
 
+  const isFiltered = query.trim().length > 0
+  const countLabel = isFiltered
+    ? `${filtered.length} of ${allCards.length}`
+    : String(allCards.length)
+
   return (
     <section
       ref={setNodeRef}
@@ -50,19 +63,23 @@ export function KanbanColumn({ board, columnId, dispatch }: KanbanColumnProps) {
       <header className="kanban-column-head">
         <h2 className="kanban-column-name">{column.name}</h2>
         <span className="kanban-column-count" aria-label="Card count">
-          {cards.length}
+          {countLabel}
         </span>
       </header>
 
       <div className="kanban-column-body">
         <SortableContext
-          items={column.cardIds}
+          items={filtered.map((c) => c.id)}
           strategy={verticalListSortingStrategy}
         >
-          {cards.length === 0 && !adding && (
-            <p className="kanban-column-empty">Drop here or add a card.</p>
+          {filtered.length === 0 && !adding && (
+            <p className="kanban-column-empty">
+              {isFiltered
+                ? 'No matches in this column.'
+                : 'Drop here or add a card.'}
+            </p>
           )}
-          {cards.map((card) => (
+          {filtered.map((card) => (
             <KanbanCard
               key={card.id}
               card={card}

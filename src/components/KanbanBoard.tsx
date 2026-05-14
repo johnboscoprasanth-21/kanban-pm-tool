@@ -19,13 +19,14 @@ import { KanbanCard } from './KanbanCard'
 interface KanbanBoardProps {
   board: Board
   dispatch: Dispatch<BoardAction>
+  query?: string
 }
 
 type DragData =
   | { type: 'card'; columnId: ColumnId; cardId: CardId }
   | { type: 'column'; columnId: ColumnId }
 
-export function KanbanBoard({ board, dispatch }: KanbanBoardProps) {
+export function KanbanBoard({ board, dispatch, query = '' }: KanbanBoardProps) {
   const [activeCardId, setActiveCardId] = useState<CardId | null>(null)
 
   // PointerSensor with a small activation distance keeps single-clicks
@@ -130,6 +131,7 @@ export function KanbanBoard({ board, dispatch }: KanbanBoardProps) {
               board={board}
               columnId={columnId}
               dispatch={dispatch}
+              query={query}
             />
           ))}
         </div>

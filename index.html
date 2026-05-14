@@ -5,6 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kanban PM · Project Management Tool</title>
+    <script>
+      // Set theme before React mounts so dark-mode users don't see a light flash.
+      (function () {
+        try {
+          var t = localStorage.getItem('kanban-pm-tool.theme')
+          if (t !== 'dark' && t !== 'light') {
+            t =
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+          }
+          document.documentElement.dataset.theme = t
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

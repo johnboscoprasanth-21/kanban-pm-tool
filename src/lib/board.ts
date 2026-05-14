@@ -11,11 +11,46 @@
 export type CardId = string
 export type ColumnId = string
 export type BoardId = string
+export type LabelId =
+  | 'bug'
+  | 'feature'
+  | 'design'
+  | 'docs'
+  | 'blocked'
+  | 'urgent'
+export type Priority = 'low' | 'medium' | 'high'
 
 export interface Card {
   id: CardId
   title: string
   description?: string
+  priority?: Priority
+  labels?: LabelId[]
+  /** epoch ms */
+  dueDate?: number
+  /** epoch ms */
+  createdAt?: number
+}
+
+/** Predefined label palette. Kept tiny and Phase-5-only. */
+export const LABELS: Record<LabelId, { name: string; color: string }> = {
+  bug: { name: 'Bug', color: '#ef4444' },
+  feature: { name: 'Feature', color: '#10b981' },
+  design: { name: 'Design', color: '#8b5cf6' },
+  docs: { name: 'Docs', color: '#06b6d4' },
+  blocked: { name: 'Blocked', color: '#f59e0b' },
+  urgent: { name: 'Urgent', color: '#ec4899' },
+}
+
+export const PRIORITIES: Priority[] = ['low', 'medium', 'high']
+
+export const PRIORITY_META: Record<
+  Priority,
+  { label: string; color: string; rank: number }
+> = {
+  low: { label: 'Low', color: '#6b7280', rank: 1 },
+  medium: { label: 'Medium', color: '#f59e0b', rank: 2 },
+  high: { label: 'High', color: '#ef4444', rank: 3 },
 }
 
 export interface Column {
@@ -74,21 +109,29 @@ export const SAMPLE_BOARD: Board = {
       id: 'c3',
       title: 'Add card priority field',
       description: 'High / Medium / Low with colour-coded pills.',
+      priority: 'high',
+      labels: ['feature'],
     },
     c4: {
       id: 'c4',
       title: 'Card create/edit modal',
       description: 'Inline edit on title; modal for details.',
+      priority: 'medium',
+      labels: ['design'],
     },
     c5: {
       id: 'c5',
       title: 'localStorage persistence',
       description: 'Single-board key for Phase 2; multi-key in Phase 4.',
+      priority: 'low',
+      labels: ['feature', 'docs'],
     },
     c6: {
       id: 'c6',
       title: 'CI/CD pipeline wiring',
       description: 'Lint → Test → Build → Deploy to GitHub Pages.',
+      priority: 'high',
+      labels: ['urgent'],
     },
     c7: {
       id: 'c7',
