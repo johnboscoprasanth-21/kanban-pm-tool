@@ -132,13 +132,21 @@ describe('boardReducer · MOVE_CARD', () => {
 })
 
 describe('boardReducer · RESET', () => {
-  it('returns the SAMPLE_BOARD verbatim', () => {
+  it('restores demo columns and cards', () => {
     const dirty = boardReducer(SAMPLE_BOARD, {
       type: 'DELETE_CARD',
       cardId: 'c1',
     })
     const reset = boardReducer(dirty, { type: 'RESET' })
-    expect(reset).toBe(SAMPLE_BOARD)
+    expect(reset.columns).toEqual(SAMPLE_BOARD.columns)
+    expect(reset.cards).toEqual(SAMPLE_BOARD.cards)
+  })
+
+  it('preserves the calling board’s identity (id + name)', () => {
+    const renamed = { ...SAMPLE_BOARD, id: 'board-foo', name: 'Foo Project' }
+    const reset = boardReducer(renamed, { type: 'RESET' })
+    expect(reset.id).toBe('board-foo')
+    expect(reset.name).toBe('Foo Project')
   })
 })
 

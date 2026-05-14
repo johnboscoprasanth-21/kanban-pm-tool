@@ -2,14 +2,26 @@ import { useEffect, useReducer } from 'react'
 import './App.css'
 import { IstClock } from './components/IstClock'
 import { KanbanBoard } from './components/KanbanBoard'
-import { boardReducer, loadBoard, saveBoard } from './lib/boardReducer'
+import { BoardSwitcher } from './components/BoardSwitcher'
+import { activeBoard } from './lib/workspace'
+import {
+  workspaceReducer,
+  loadWorkspace,
+  saveWorkspace,
+} from './lib/workspaceReducer'
 
 function App() {
-  const [board, dispatch] = useReducer(boardReducer, undefined, loadBoard)
+  const [workspace, dispatch] = useReducer(
+    workspaceReducer,
+    undefined,
+    loadWorkspace,
+  )
 
   useEffect(() => {
-    saveBoard(board)
-  }, [board])
+    saveWorkspace(workspace)
+  }, [workspace])
+
+  const board = activeBoard(workspace)
 
   return (
     <div className="app">
@@ -26,6 +38,7 @@ function App() {
           </div>
         </div>
         <div className="header-right">
+          <BoardSwitcher workspace={workspace} dispatch={dispatch} />
           <span className="phase-pill" title="Current development phase">
             {__APP_PHASE__}
           </span>
@@ -42,6 +55,12 @@ function App() {
             <dt>Phase</dt>
             <dd>
               <code>{__APP_PHASE__}</code>
+            </dd>
+            <dt>Active board</dt>
+            <dd>
+              <code>
+                {board.name} ({workspace.boardOrder.length} total)
+              </code>
             </dd>
             <dt>Commit</dt>
             <dd>

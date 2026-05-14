@@ -107,7 +107,9 @@ export function boardReducer(state: Board, action: BoardAction): Board {
     }
 
     case 'RESET':
-      return SAMPLE_BOARD
+      // Replace columns/cards with the demo seed but keep this board's
+      // identity (id + name) so it stays selectable in the workspace.
+      return { ...SAMPLE_BOARD, id: state.id, name: state.name }
 
     default:
       return state
