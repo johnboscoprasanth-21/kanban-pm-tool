@@ -243,6 +243,25 @@ export function CardDetailModal({
               Created {formatIst(new Date(card.createdAt))}
             </p>
           )}
+
+          {card.history && card.history.length > 0 && (
+            <div className="modal-field">
+              <span className="modal-field-label">Activity</span>
+              <ul className="history-list">
+                {card.history
+                  .slice()
+                  .reverse()
+                  .map((h, i) => (
+                    <li key={`${h.at}-${i}`} className="history-item">
+                      <time className="history-time">
+                        {formatIst(new Date(h.at))}
+                      </time>
+                      <span className="history-text">{h.text}</span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <footer className="modal-foot">

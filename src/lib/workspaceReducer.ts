@@ -9,6 +9,7 @@ import type { Board, BoardId } from './board'
 import { boardReducer, type BoardAction } from './boardReducer'
 import {
   SAMPLE_WORKSPACE,
+  makeBoardId,
   makeEmptyBoard,
   type Workspace,
 } from './workspace'
@@ -22,6 +23,7 @@ export type WorkspaceAction =
   | { type: 'CREATE_BOARD'; name: string }
   | { type: 'RENAME_BOARD'; boardId: BoardId; name: string }
   | { type: 'DELETE_BOARD'; boardId: BoardId }
+  | { type: 'IMPORT_BOARD'; board: Board }
 
 export function workspaceReducer(
   state: Workspace,
@@ -71,6 +73,26 @@ export function workspaceReducer(
         activeBoardId: newActive,
         boardOrder: newOrder,
         boards: newBoards,
+      }
+    }
+
+    case 'IMPORT_BOARD': {
+      // Assign a fresh board id to avoid colliding with existing ones,
+      // and force the imported name to be unique enough by appending
+      // " (imported)" when there's a clash.
+      const incoming = action.board
+      const newId = makeBoardId()
+      const existingNames = new Set(
+        Object.values(state.boards).map((b) => b.name),
+      )
+      const name = existingNames.has(incoming.name)
+        ? `${incoming.name} (imported)`
+        : incoming.name
+      const imported: Board = { ...incoming, id: newId, name }
+      return {
+        activeBoardId: newId,
+        boardOrder: [...state.boardOrder, newId],
+        boards: { ...state.boards, [newId]: imported },
       }
     }
 

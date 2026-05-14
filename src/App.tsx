@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from 'react'
 import './App.css'
 import { IstClock } from './components/IstClock'
 import { KanbanBoard } from './components/KanbanBoard'
@@ -9,7 +15,8 @@ import { FilterBar } from './components/FilterBar'
 import { BoardStats } from './components/BoardStats'
 import { UndoToast } from './components/UndoToast'
 import { CardDetailModal } from './components/CardDetailModal'
-import type { Card, CardId, ColumnId } from './lib/board'
+import { ShortcutsOverlay } from './components/ShortcutsOverlay'
+import type { Board, Card, CardId, ColumnId } from './lib/board'
 import { activeBoard } from './lib/workspace'
 import {
   workspaceReducer,
@@ -38,6 +45,33 @@ function findCardLocation(
   return null
 }
 
+function downloadBoardAsJson(board: Board): void {
+  const data = JSON.stringify(board, null, 2)
+  const blob = new Blob([data], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  const safeName = board.name.replace(/[^a-z0-9\-_]+/gi, '_').toLowerCase()
+  a.href = url
+  a.download = `${safeName || 'board'}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 200)
+}
+
+function looksLikeBoard(input: unknown): input is Board {
+  if (!input || typeof input !== 'object') return false
+  const b = input as Board
+  return (
+    typeof b.name === 'string' &&
+    Array.isArray(b.columnIds) &&
+    b.columns !== null &&
+    typeof b.columns === 'object' &&
+    b.cards !== null &&
+    typeof b.cards === 'object'
+  )
+}
+
 function App() {
   const [workspace, baseDispatch] = useReducer(
     workspaceReducer,
@@ -49,7 +83,9 @@ function App() {
   const [theme, , toggleTheme] = useTheme()
   const [openCardId, setOpenCardId] = useState<CardId | null>(null)
   const [undo, setUndo] = useState<UndoState | null>(null)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const workspaceRef = useRef(workspace)
   useEffect(() => {
@@ -75,23 +111,25 @@ function App() {
     baseDispatch(action)
   }, [])
 
-  // Keyboard shortcut: "/" focuses the search box (unless typing in an input).
+  // Keyboard shortcuts: "/" focus search, "?" open shortcuts overlay.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== '/') return
       const t = e.target as HTMLElement | null
       const tag = t?.tagName?.toLowerCase()
-      if (
+      const typing =
         tag === 'input' ||
         tag === 'textarea' ||
         tag === 'select' ||
-        t?.isContentEditable
-      ) {
-        return
+        t?.isContentEditable === true
+      if (typing) return
+      if (e.key === '/') {
+        e.preventDefault()
+        searchRef.current?.focus()
+        searchRef.current?.select()
+      } else if (e.key === '?') {
+        e.preventDefault()
+        setShortcutsOpen(true)
       }
-      e.preventDefault()
-      searchRef.current?.focus()
-      searchRef.current?.select()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -114,6 +152,31 @@ function App() {
     setUndo(null)
   }
 
+  const handleExport = () => {
+    downloadBoardAsJson(board)
+  }
+
+  const handleImportClick = () => {
+    importInputRef.current?.click()
+  }
+
+  const handleImportFile = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result))
+        if (!looksLikeBoard(parsed)) {
+          alert('That file doesn’t look like a board JSON.')
+          return
+        }
+        dispatch({ type: 'IMPORT_BOARD', board: parsed })
+      } catch {
+        alert('Failed to parse JSON. Check the file and try again.')
+      }
+    }
+    reader.readAsText(file)
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -129,15 +192,20 @@ function App() {
           </div>
         </div>
         <div className="header-right">
-          <SearchBar
-            query={query}
-            onChange={setQuery}
-            inputRef={searchRef}
-          />
+          <SearchBar query={query} onChange={setQuery} inputRef={searchRef} />
           <BoardSwitcher workspace={workspace} dispatch={dispatch} />
           <span className="phase-pill" title="Current development phase">
             {__APP_PHASE__}
           </span>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={() => setShortcutsOpen(true)}
+            aria-label="Show keyboard shortcuts"
+            title="Keyboard shortcuts (?)"
+          >
+            ?
+          </button>
           <ThemeToggle theme={theme} toggle={toggleTheme} />
           <IstClock />
         </div>
@@ -155,6 +223,22 @@ function App() {
           query={query}
           filter={filter}
           onOpenCard={setOpenCardId}
+          onExport={handleExport}
+          onImport={handleImportClick}
+        />
+
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="visually-hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) handleImportFile(f)
+            e.target.value = ''
+          }}
         />
 
         <section className="build-card" aria-label="Build info">
@@ -206,6 +290,10 @@ function App() {
           onUndo={handleUndo}
           onDismiss={() => setUndo(null)}
         />
+      )}
+
+      {shortcutsOpen && (
+        <ShortcutsOverlay onClose={() => setShortcutsOpen(false)} />
       )}
     </div>
   )

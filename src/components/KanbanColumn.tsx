@@ -1,10 +1,12 @@
 import {
   useState,
+  type CSSProperties,
   type Dispatch,
   type FormEvent,
   type KeyboardEvent,
 } from 'react'
-import { useDroppable } from '@dnd-kit/core'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -23,7 +25,6 @@ interface KanbanColumnProps {
   query?: string
   filter?: Filter
   onOpenCard?: (cardId: string) => void
-  /** When > 1, allow this column to be deleted. */
   canDeleteColumn?: boolean
 }
 
@@ -46,12 +47,21 @@ export function KanbanColumn({
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(column?.name ?? '')
 
-  const { setNodeRef, isOver } = useDroppable({
+  // useSortable makes the column draggable AND droppable. Cards dropping
+  // on the column will hit this droppable (data type: 'column').
+  const sortable = useSortable({
     id: columnId,
     data: { type: 'column', columnId },
+    disabled: renaming, // don't drag while editing the name
   })
 
   if (!column) return null
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(sortable.transform),
+    transition: sortable.transition,
+    opacity: sortable.isDragging ? 0.5 : 1,
+  }
 
   const submitAdd = (e: FormEvent) => {
     e.preventDefault()
@@ -69,19 +79,16 @@ export function KanbanColumn({
     setRenameValue(column.name)
     setRenaming(true)
   }
-
   const commitRename = () => {
     if (renameValue.trim() && renameValue !== column.name) {
       dispatch({ type: 'RENAME_COLUMN', columnId, name: renameValue })
     }
     setRenaming(false)
   }
-
   const cancelRename = () => {
     setRenameValue(column.name)
     setRenaming(false)
   }
-
   const onRenameKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -103,19 +110,27 @@ export function KanbanColumn({
     }
   }
 
-  const isFiltered = query.trim().length > 0 || (filter && filtered.length !== allCards.length)
+  const isFiltered =
+    query.trim().length > 0 || (filter && filtered.length !== allCards.length)
   const countLabel = isFiltered
     ? `${filtered.length} of ${allCards.length}`
     : String(allCards.length)
 
   return (
     <section
-      ref={setNodeRef}
-      className={`kanban-column ${isOver ? 'is-drop-target' : ''}`}
+      ref={sortable.setNodeRef}
+      style={style}
+      className={`kanban-column ${sortable.isOver ? 'is-drop-target' : ''} ${
+        sortable.isDragging ? 'is-dragging' : ''
+      }`}
       data-testid={`column-${columnId}`}
       aria-label={`Column ${column.name}`}
     >
-      <header className="kanban-column-head">
+      <header
+        className="kanban-column-head"
+        {...(renaming ? {} : sortable.attributes)}
+        {...(renaming ? {} : sortable.listeners)}
+      >
         {renaming ? (
           <input
             type="text"
@@ -133,8 +148,9 @@ export function KanbanColumn({
             type="button"
             className="kanban-column-name-btn"
             onClick={startRename}
+            onPointerDown={(e) => e.stopPropagation()}
             aria-label={`Rename column: ${column.name}`}
-            title="Click to rename"
+            title="Click to rename · drag header to reorder"
           >
             <h2 className="kanban-column-name">{column.name}</h2>
           </button>
@@ -147,6 +163,7 @@ export function KanbanColumn({
             type="button"
             className="column-delete-btn"
             onClick={handleDeleteColumn}
+            onPointerDown={(e) => e.stopPropagation()}
             disabled={!canDeleteColumn}
             aria-label={`Delete column: ${column.name}`}
             title={canDeleteColumn ? 'Delete column' : 'Cannot delete last column'}

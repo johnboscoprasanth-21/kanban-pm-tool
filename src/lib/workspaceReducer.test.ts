@@ -103,6 +103,33 @@ describe('workspaceReducer · DELETE_BOARD', () => {
   })
 })
 
+describe('workspaceReducer · IMPORT_BOARD', () => {
+  it('adds an imported board with a fresh id and switches to it', () => {
+    const imported = {
+      ...SAMPLE_BOARD,
+      id: 'will-be-replaced',
+      name: 'Imported',
+    }
+    const next = workspaceReducer(SAMPLE_WORKSPACE, {
+      type: 'IMPORT_BOARD',
+      board: imported,
+    })
+    expect(next.boardOrder.length).toBe(SAMPLE_WORKSPACE.boardOrder.length + 1)
+    const newId = next.activeBoardId
+    expect(newId).not.toBe('will-be-replaced')
+    expect(next.boards[newId].name).toBe('Imported')
+  })
+
+  it('renames on name clash', () => {
+    const clash = { ...SAMPLE_BOARD, name: SAMPLE_BOARD.name }
+    const next = workspaceReducer(SAMPLE_WORKSPACE, {
+      type: 'IMPORT_BOARD',
+      board: clash,
+    })
+    expect(next.boards[next.activeBoardId].name).toMatch(/imported/i)
+  })
+})
+
 describe('workspaceReducer · delegated card actions', () => {
   it('ADD_CARD applies to the active board only', () => {
     const next = workspaceReducer(SAMPLE_WORKSPACE, {

@@ -20,6 +20,12 @@ export type LabelId =
   | 'urgent'
 export type Priority = 'low' | 'medium' | 'high'
 
+export interface HistoryEntry {
+  /** epoch ms */
+  at: number
+  text: string
+}
+
 export interface Card {
   id: CardId
   title: string
@@ -30,6 +36,18 @@ export interface Card {
   dueDate?: number
   /** epoch ms */
   createdAt?: number
+  /** Recent activity entries (most recent last). Capped at 10. */
+  history?: HistoryEntry[]
+}
+
+/** Append a history entry, keeping at most 10 entries. */
+export function appendHistory(
+  history: HistoryEntry[] | undefined,
+  text: string,
+): HistoryEntry[] {
+  const entry: HistoryEntry = { at: Date.now(), text }
+  const trimmed = (history ?? []).slice(-9)
+  return [...trimmed, entry]
 }
 
 /** Predefined label palette. Kept tiny and Phase-5-only. */

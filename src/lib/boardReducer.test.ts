@@ -230,6 +230,66 @@ describe('boardReducer · DELETE_COLUMN', () => {
   })
 })
 
+describe('boardReducer · REORDER_COLUMNS', () => {
+  it('replaces the column order with the given list', () => {
+    const reversed = [...SAMPLE_BOARD.columnIds].reverse()
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'REORDER_COLUMNS',
+      columnIds: reversed,
+    })
+    expect(next.columnIds).toEqual(reversed)
+  })
+
+  it('rejects orderings with missing or extra ids', () => {
+    const bad = boardReducer(SAMPLE_BOARD, {
+      type: 'REORDER_COLUMNS',
+      columnIds: ['col-todo', 'col-progress'],
+    })
+    expect(bad).toBe(SAMPLE_BOARD)
+    const extra = boardReducer(SAMPLE_BOARD, {
+      type: 'REORDER_COLUMNS',
+      columnIds: [...SAMPLE_BOARD.columnIds, 'col-foo'],
+    })
+    expect(extra).toBe(SAMPLE_BOARD)
+  })
+})
+
+describe('boardReducer · history', () => {
+  it('appends a Created entry on ADD_CARD', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_CARD',
+      columnId: 'col-todo',
+      title: 'New task',
+    })
+    const ids = next.columns['col-todo'].cardIds
+    const addedId = ids[ids.length - 1]
+    expect(next.cards[addedId].history?.[0].text).toMatch(/Created in "To Do"/)
+  })
+
+  it('appends a Moved entry on cross-column MOVE_CARD', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'MOVE_CARD',
+      cardId: 'c1',
+      toColumnId: 'col-done',
+      toIndex: 0,
+    })
+    const h = next.cards.c1.history ?? []
+    expect(h[h.length - 1].text).toMatch(/Moved from "To Do" to "Done"/)
+  })
+
+  it('does not add a history entry on in-column reorder', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'MOVE_CARD',
+      cardId: 'c1',
+      toColumnId: 'col-todo',
+      toIndex: 2,
+    })
+    const before = SAMPLE_BOARD.cards.c1.history?.length ?? 0
+    const after = next.cards.c1.history?.length ?? 0
+    expect(after).toBe(before)
+  })
+})
+
 describe('boardReducer · RESTORE_CARD', () => {
   it('reinserts a removed card at the given index', () => {
     const deleted = boardReducer(SAMPLE_BOARD, {

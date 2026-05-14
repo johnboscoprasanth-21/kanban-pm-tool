@@ -18,6 +18,7 @@ A Trello/Jira-style project management tool, built **in phases**, each phase aut
 | **4 · Multiple boards** | Board switcher, create / rename / delete boards | ✅ live |
 | **5 · Polish** | Search, labels, priority, due dates (IST), dark mode | ✅ live |
 | **6 · Power features** | Editable columns, card detail modal, filter bar, board stats, undo delete (5s), `/` search shortcut | ✅ live |
+| **7 · Pro workflows** | Column drag-to-reorder, Export/Import board JSON, card activity history, `?` shortcuts overlay, mobile responsive | ✅ live |
 
 Every push to `main` triggers a Lint → Test → Build → Deploy pipeline; the live URL above always reflects the latest green commit on `main`.
 

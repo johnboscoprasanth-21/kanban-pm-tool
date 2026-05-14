@@ -7,6 +7,7 @@
 
 import {
   SAMPLE_BOARD,
+  appendHistory,
   type Board,
   type Card,
   type CardId,
@@ -33,6 +34,7 @@ export type BoardAction =
   | { type: 'ADD_COLUMN'; name: string }
   | { type: 'RENAME_COLUMN'; columnId: ColumnId; name: string }
   | { type: 'DELETE_COLUMN'; columnId: ColumnId }
+  | { type: 'REORDER_COLUMNS'; columnIds: ColumnId[] }
   | { type: 'RESET' }
 
 function makeCardId(): CardId {
@@ -58,6 +60,7 @@ export function boardReducer(state: Board, action: BoardAction): Board {
       const col = state.columns[action.columnId]
       if (!col) return state
       const id = makeCardId()
+      const now = Date.now()
       return {
         ...state,
         cards: {
@@ -65,7 +68,8 @@ export function boardReducer(state: Board, action: BoardAction): Board {
           [id]: {
             id,
             title: action.title.trim() || 'Untitled',
-            createdAt: Date.now(),
+            createdAt: now,
+            history: [{ at: now, text: `Created in "${col.name}"` }],
           },
         },
         columns: {
@@ -135,7 +139,39 @@ export function boardReducer(state: Board, action: BoardAction): Board {
         newColumns[fromColId] = { ...fromCol, cardIds: sourceIds }
         newColumns[action.toColumnId] = { ...toCol, cardIds: targetIds }
       }
-      return { ...state, columns: newColumns }
+
+      // Append a history entry on the card only for cross-column moves;
+      // we don't want to spam history on in-column reordering.
+      let newCards = state.cards
+      if (fromColId !== action.toColumnId) {
+        const card = state.cards[action.cardId]
+        if (card) {
+          newCards = {
+            ...state.cards,
+            [action.cardId]: {
+              ...card,
+              history: appendHistory(
+                card.history,
+                `Moved from "${fromCol.name}" to "${toCol.name}"`,
+              ),
+            },
+          }
+        }
+      }
+      return { ...state, columns: newColumns, cards: newCards }
+    }
+
+    case 'REORDER_COLUMNS': {
+      // Validate that the new order has exactly the same set of column ids.
+      const current = new Set(state.columnIds)
+      const next = new Set(action.columnIds)
+      if (
+        current.size !== next.size ||
+        action.columnIds.some((id) => !current.has(id))
+      ) {
+        return state
+      }
+      return { ...state, columnIds: action.columnIds }
     }
 
     case 'ADD_COLUMN': {

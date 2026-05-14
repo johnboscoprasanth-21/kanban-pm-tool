@@ -10,6 +10,11 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import type { Board, CardId, ColumnId } from '../lib/board'
 import { totalCards } from '../lib/board'
 import type { BoardAction } from '../lib/boardReducer'
@@ -23,11 +28,18 @@ interface KanbanBoardProps {
   query?: string
   filter?: Filter
   onOpenCard?: (cardId: CardId) => void
+  onExport?: () => void
+  onImport?: () => void
 }
 
 type DragData =
   | { type: 'card'; columnId: ColumnId; cardId: CardId }
   | { type: 'column'; columnId: ColumnId }
+
+type ActiveDrag =
+  | { kind: 'card'; cardId: CardId }
+  | { kind: 'column'; columnId: ColumnId }
+  | null
 
 export function KanbanBoard({
   board,
@@ -35,8 +47,10 @@ export function KanbanBoard({
   query = '',
   filter,
   onOpenCard,
+  onExport,
+  onImport,
 }: KanbanBoardProps) {
-  const [activeCardId, setActiveCardId] = useState<CardId | null>(null)
+  const [activeDrag, setActiveDrag] = useState<ActiveDrag>(null)
   const [addingColumn, setAddingColumn] = useState(false)
   const [newColumnName, setNewColumnName] = useState('')
 
@@ -46,17 +60,36 @@ export function KanbanBoard({
   )
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveCardId(String(event.active.id))
+    const data = event.active.data.current as DragData | undefined
+    if (data?.type === 'card') {
+      setActiveDrag({ kind: 'card', cardId: data.cardId })
+    } else if (data?.type === 'column') {
+      setActiveDrag({ kind: 'column', columnId: data.columnId })
+    }
   }
-  const handleDragCancel = () => setActiveCardId(null)
+  const handleDragCancel = () => setActiveDrag(null)
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setActiveCardId(null)
+    setActiveDrag(null)
     const { active, over } = event
     if (!over) return
     const activeData = active.data.current as DragData | undefined
     const overData = over.data.current as DragData | undefined
-    if (!activeData || activeData.type !== 'card' || !overData) return
+    if (!activeData || !overData) return
+
+    // ── Column reorder ──
+    if (activeData.type === 'column' && overData.type === 'column') {
+      if (activeData.columnId === overData.columnId) return
+      const from = board.columnIds.indexOf(activeData.columnId)
+      const to = board.columnIds.indexOf(overData.columnId)
+      if (from < 0 || to < 0) return
+      const next = arrayMove(board.columnIds, from, to)
+      dispatch({ type: 'REORDER_COLUMNS', columnIds: next })
+      return
+    }
+
+    // ── Card move (existing logic) ──
+    if (activeData.type !== 'card') return
     const cardId = activeData.cardId
     let toColumnId: ColumnId
     let toIndex: number
@@ -77,12 +110,14 @@ export function KanbanBoard({
     dispatch({ type: 'MOVE_CARD', cardId, toColumnId, toIndex })
   }
 
-  const activeCard = activeCardId ? board.cards[activeCardId] : null
-  const activeCardColumnId = activeCardId
-    ? (Object.values(board.columns).find((c) =>
-        c.cardIds.includes(activeCardId),
-      )?.id ?? board.columnIds[0])
-    : board.columnIds[0]
+  const activeCard =
+    activeDrag?.kind === 'card' ? board.cards[activeDrag.cardId] : null
+  const activeCardColumnId =
+    activeDrag?.kind === 'card'
+      ? (Object.values(board.columns).find((c) =>
+          c.cardIds.includes(activeDrag.cardId),
+        )?.id ?? board.columnIds[0])
+      : board.columnIds[0]
 
   const submitNewColumn = (e: FormEvent) => {
     e.preventDefault()
@@ -108,22 +143,48 @@ export function KanbanBoard({
         <div>
           <h1 className="kanban-board-name">{board.name}</h1>
           <p className="kanban-board-sub">
-            {totalCards(board)} cards · drag cards between columns · click a
-            card for details · changes persist locally
+            {totalCards(board)} cards · drag cards or columns · click a card
+            for details · changes persist locally
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => {
-            if (confirm('Reset to demo data? This will discard your changes.')) {
-              dispatch({ type: 'RESET' })
-            }
-          }}
-          aria-label="Reset board to demo data"
-        >
-          Reset to demo
-        </button>
+        <div className="board-actions">
+          {onExport && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onExport}
+              aria-label="Export board as JSON"
+              title="Download this board as JSON"
+            >
+              ⬇ Export
+            </button>
+          )}
+          {onImport && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onImport}
+              aria-label="Import a board from JSON"
+              title="Upload a board JSON file"
+            >
+              ⬆ Import
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              if (
+                confirm('Reset to demo data? This will discard your changes.')
+              ) {
+                dispatch({ type: 'RESET' })
+              }
+            }}
+            aria-label="Reset board to demo data"
+          >
+            Reset to demo
+          </button>
+        </div>
       </header>
 
       <DndContext
@@ -133,60 +194,65 @@ export function KanbanBoard({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="kanban-board-grid">
-          {board.columnIds.map((columnId) => (
-            <KanbanColumn
-              key={columnId}
-              board={board}
-              columnId={columnId}
-              dispatch={dispatch}
-              query={query}
-              filter={filter}
-              onOpenCard={onOpenCard}
-              canDeleteColumn={canDeleteColumn}
-            />
-          ))}
-          {addingColumn ? (
-            <form className="add-column-form" onSubmit={submitNewColumn}>
-              <input
-                type="text"
-                value={newColumnName}
-                onChange={(e) => setNewColumnName(e.target.value)}
-                placeholder="Column name"
-                autoFocus
-                maxLength={40}
-                aria-label="New column name"
-                onBlur={() => {
-                  if (!newColumnName.trim()) setAddingColumn(false)
-                }}
+        <SortableContext
+          items={board.columnIds}
+          strategy={horizontalListSortingStrategy}
+        >
+          <div className="kanban-board-grid">
+            {board.columnIds.map((columnId) => (
+              <KanbanColumn
+                key={columnId}
+                board={board}
+                columnId={columnId}
+                dispatch={dispatch}
+                query={query}
+                filter={filter}
+                onOpenCard={onOpenCard}
+                canDeleteColumn={canDeleteColumn}
               />
-              <div className="add-column-actions">
-                <button type="submit" className="btn btn-primary btn-sm">
-                  Add
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => {
-                    setAddingColumn(false)
-                    setNewColumnName('')
+            ))}
+            {addingColumn ? (
+              <form className="add-column-form" onSubmit={submitNewColumn}>
+                <input
+                  type="text"
+                  value={newColumnName}
+                  onChange={(e) => setNewColumnName(e.target.value)}
+                  placeholder="Column name"
+                  autoFocus
+                  maxLength={40}
+                  aria-label="New column name"
+                  onBlur={() => {
+                    if (!newColumnName.trim()) setAddingColumn(false)
                   }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          ) : (
-            <button
-              type="button"
-              className="add-column-btn"
-              onClick={() => setAddingColumn(true)}
-              aria-label="Add a column"
-            >
-              + Add column
-            </button>
-          )}
-        </div>
+                />
+                <div className="add-column-actions">
+                  <button type="submit" className="btn btn-primary btn-sm">
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => {
+                      setAddingColumn(false)
+                      setNewColumnName('')
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button
+                type="button"
+                className="add-column-btn"
+                onClick={() => setAddingColumn(true)}
+                aria-label="Add a column"
+              >
+                + Add column
+              </button>
+            )}
+          </div>
+        </SortableContext>
         <DragOverlay dropAnimation={null}>
           {activeCard ? (
             <KanbanCard
