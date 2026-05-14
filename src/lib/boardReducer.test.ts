@@ -344,6 +344,112 @@ describe('boardReducer · RESTORE_CARD', () => {
   })
 })
 
+describe('boardReducer · sprints', () => {
+  it('CREATE_SPRINT adds a planning sprint', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'CREATE_SPRINT',
+      name: 'Sprint 16',
+    })
+    expect(next.sprintOrder?.length).toBe(
+      (SAMPLE_BOARD.sprintOrder?.length ?? 0) + 1,
+    )
+    const newId = next.sprintOrder![next.sprintOrder!.length - 1]
+    expect(next.sprints![newId].state).toBe('planning')
+  })
+
+  it('START_SPRINT is a no-op while another sprint is active', () => {
+    // SAMPLE_BOARD already has sprint-14 active
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'START_SPRINT',
+      sprintId: 'sprint-15',
+    })
+    expect(next).toBe(SAMPLE_BOARD)
+  })
+
+  it('START_SPRINT activates when nothing is active', () => {
+    const idle = { ...SAMPLE_BOARD, activeSprintId: undefined }
+    const next = boardReducer(idle, {
+      type: 'START_SPRINT',
+      sprintId: 'sprint-15',
+    })
+    expect(next.activeSprintId).toBe('sprint-15')
+    expect(next.sprints!['sprint-15'].state).toBe('active')
+  })
+
+  it('COMPLETE_SPRINT moves incomplete cards back to backlog', () => {
+    // c1..c7 are in sprint-14; c7,c8 are in col-done.
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'COMPLETE_SPRINT',
+      sprintId: 'sprint-14',
+    })
+    expect(next.activeSprintId).toBeUndefined()
+    expect(next.sprints!['sprint-14'].state).toBe('completed')
+    // c1 not in Done -> backlog
+    expect(next.cards.c1.sprintId).toBeUndefined()
+    // c7 in Done -> stays
+    expect(next.cards.c7.sprintId).toBe('sprint-14')
+  })
+
+  it('DELETE_SPRINT refuses to delete an active sprint', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'DELETE_SPRINT',
+      sprintId: 'sprint-14',
+    })
+    expect(next).toBe(SAMPLE_BOARD)
+  })
+
+  it('DELETE_SPRINT clears sprintId from its cards', () => {
+    // sprint-15 is planning (no cards), so add one first
+    const withCard = boardReducer(SAMPLE_BOARD, {
+      type: 'SET_CARD_SPRINT',
+      cardId: 'c1',
+      sprintId: 'sprint-15',
+    })
+    const after = boardReducer(withCard, {
+      type: 'DELETE_SPRINT',
+      sprintId: 'sprint-15',
+    })
+    expect(after.sprints?.['sprint-15']).toBeUndefined()
+    expect(after.cards.c1.sprintId).toBeUndefined()
+  })
+
+  it('SET_CARD_SPRINT updates the card', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'SET_CARD_SPRINT',
+      cardId: 'c1',
+      sprintId: null,
+    })
+    expect(next.cards.c1.sprintId).toBeUndefined()
+  })
+})
+
+describe('boardReducer · comments', () => {
+  it('ADD_COMMENT appends a comment to the card', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_COMMENT',
+      cardId: 'c1',
+      authorId: 'jbp',
+      text: 'Looks good',
+    })
+    const comments = next.cards.c1.comments ?? []
+    expect(comments.length).toBeGreaterThan(0)
+    const last = comments[comments.length - 1]
+    expect(last.text).toBe('Looks good')
+    expect(last.authorId).toBe('jbp')
+    expect(typeof last.at).toBe('number')
+  })
+
+  it('ADD_COMMENT trims whitespace and rejects empty', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_COMMENT',
+      cardId: 'c1',
+      authorId: 'jbp',
+      text: '   ',
+    })
+    expect(next).toBe(SAMPLE_BOARD)
+  })
+})
+
 describe('loadBoard / saveBoard', () => {
   it('round-trips a board through localStorage', () => {
     saveBoard(SAMPLE_BOARD)

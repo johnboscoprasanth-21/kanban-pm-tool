@@ -9,10 +9,14 @@ import {
   SAMPLE_BOARD,
   appendHistory,
   inferKeyPrefix,
+  type AssigneeId,
   type Board,
   type Card,
   type CardId,
   type ColumnId,
+  type Comment,
+  type Sprint,
+  type SprintId,
 } from './board'
 
 export const STORAGE_KEY = 'kanban-pm-tool.board.v1'
@@ -36,6 +40,21 @@ export type BoardAction =
   | { type: 'RENAME_COLUMN'; columnId: ColumnId; name: string }
   | { type: 'DELETE_COLUMN'; columnId: ColumnId }
   | { type: 'REORDER_COLUMNS'; columnIds: ColumnId[] }
+  | { type: 'CREATE_SPRINT'; name: string }
+  | { type: 'START_SPRINT'; sprintId: SprintId }
+  | { type: 'COMPLETE_SPRINT'; sprintId: SprintId }
+  | { type: 'DELETE_SPRINT'; sprintId: SprintId }
+  | {
+      type: 'SET_CARD_SPRINT'
+      cardId: CardId
+      sprintId: SprintId | null
+    }
+  | {
+      type: 'ADD_COMMENT'
+      cardId: CardId
+      authorId: AssigneeId
+      text: string
+    }
   | { type: 'RESET' }
 
 function makeCardId(): CardId {
@@ -46,6 +65,18 @@ function makeColumnId(): ColumnId {
   return `col-${Date.now().toString(36)}-${Math.random()
     .toString(36)
     .slice(2, 7)}`
+}
+
+function makeSprintId(): SprintId {
+  return `sp-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 6)}`
+}
+
+function makeCommentId(): string {
+  return `cm-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 6)}`
 }
 
 function findColumnForCard(board: Board, cardId: CardId): ColumnId | undefined {
@@ -67,22 +98,23 @@ export function boardReducer(state: Board, action: BoardAction): Board {
       const prefix = state.keyPrefix ?? inferKeyPrefix(state.name)
       const num = state.nextIssueNumber ?? 1
       const key = `${prefix}-${num}`
+      // When a sprint is active, new cards join it automatically so they
+      // appear on the board view the user is currently looking at.
+      const newCard: Card = {
+        id,
+        key,
+        title: action.title.trim() || 'Untitled',
+        type: 'task',
+        assignee: 'unassigned',
+        createdAt: now,
+        history: [{ at: now, text: `Created in "${col.name}"` }],
+      }
+      if (state.activeSprintId) newCard.sprintId = state.activeSprintId
       return {
         ...state,
         keyPrefix: prefix,
         nextIssueNumber: num + 1,
-        cards: {
-          ...state.cards,
-          [id]: {
-            id,
-            key,
-            title: action.title.trim() || 'Untitled',
-            type: 'task',
-            assignee: 'unassigned',
-            createdAt: now,
-            history: [{ at: now, text: `Created in "${col.name}"` }],
-          },
-        },
+        cards: { ...state.cards, [id]: newCard },
         columns: {
           ...state.columns,
           [col.id]: { ...col, cardIds: [...col.cardIds, id] },
@@ -241,6 +273,122 @@ export function boardReducer(state: Board, action: BoardAction): Board {
         columns: {
           ...state.columns,
           [action.columnId]: { ...col, cardIds: newCardIds },
+        },
+      }
+    }
+
+    case 'CREATE_SPRINT': {
+      const id = makeSprintId()
+      const sprint: Sprint = {
+        id,
+        name: action.name.trim() || 'New sprint',
+        state: 'planning',
+      }
+      return {
+        ...state,
+        sprints: { ...(state.sprints ?? {}), [id]: sprint },
+        sprintOrder: [...(state.sprintOrder ?? []), id],
+      }
+    }
+
+    case 'START_SPRINT': {
+      const sprint = state.sprints?.[action.sprintId]
+      if (!sprint || sprint.state !== 'planning') return state
+      // Only one active sprint at a time.
+      if (state.activeSprintId) return state
+      const updated: Sprint = {
+        ...sprint,
+        state: 'active',
+        startedAt: Date.now(),
+      }
+      return {
+        ...state,
+        sprints: { ...state.sprints, [action.sprintId]: updated },
+        activeSprintId: action.sprintId,
+      }
+    }
+
+    case 'COMPLETE_SPRINT': {
+      const sprint = state.sprints?.[action.sprintId]
+      if (!sprint || sprint.state !== 'active') return state
+      const lastColId = state.columnIds[state.columnIds.length - 1]
+      const lastColCards = new Set(state.columns[lastColId]?.cardIds ?? [])
+      // Cards in this sprint not in the last (Done) column go to backlog.
+      const newCards: Record<CardId, Card> = {}
+      for (const [id, c] of Object.entries(state.cards)) {
+        if (c.sprintId === action.sprintId && !lastColCards.has(id)) {
+          newCards[id] = { ...c, sprintId: undefined }
+        } else {
+          newCards[id] = c
+        }
+      }
+      const updated: Sprint = {
+        ...sprint,
+        state: 'completed',
+        completedAt: Date.now(),
+      }
+      const next: Board = {
+        ...state,
+        cards: newCards,
+        sprints: { ...state.sprints, [action.sprintId]: updated },
+      }
+      delete next.activeSprintId
+      return next
+    }
+
+    case 'DELETE_SPRINT': {
+      const sprint = state.sprints?.[action.sprintId]
+      if (!sprint) return state
+      if (sprint.state === 'active') return state
+      const newCards: Record<CardId, Card> = {}
+      for (const [id, c] of Object.entries(state.cards)) {
+        newCards[id] =
+          c.sprintId === action.sprintId ? { ...c, sprintId: undefined } : c
+      }
+      const newSprints = { ...state.sprints }
+      delete newSprints[action.sprintId]
+      return {
+        ...state,
+        cards: newCards,
+        sprints: newSprints,
+        sprintOrder: (state.sprintOrder ?? []).filter(
+          (id) => id !== action.sprintId,
+        ),
+      }
+    }
+
+    case 'SET_CARD_SPRINT': {
+      const card = state.cards[action.cardId]
+      if (!card) return state
+      const newSprintId = action.sprintId ?? undefined
+      if (card.sprintId === newSprintId) return state
+      const updated: Card = { ...card, sprintId: newSprintId }
+      if (newSprintId === undefined) delete updated.sprintId
+      return {
+        ...state,
+        cards: { ...state.cards, [action.cardId]: updated },
+      }
+    }
+
+    case 'ADD_COMMENT': {
+      const card = state.cards[action.cardId]
+      if (!card) return state
+      const text = action.text.trim()
+      if (!text) return state
+      const comment: Comment = {
+        id: makeCommentId(),
+        authorId: action.authorId,
+        text,
+        at: Date.now(),
+      }
+      return {
+        ...state,
+        cards: {
+          ...state.cards,
+          [action.cardId]: {
+            ...card,
+            comments: [...(card.comments ?? []), comment],
+          },
         },
       }
     }

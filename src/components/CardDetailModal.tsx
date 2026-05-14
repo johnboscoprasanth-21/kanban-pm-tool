@@ -13,6 +13,7 @@ import {
   PRIORITIES,
   PRIORITY_META,
   TEAM,
+  assigneeInitials,
   type AssigneeId,
   type Board,
   type Card,
@@ -21,6 +22,7 @@ import {
   type IssueType,
   type LabelId,
   type Priority,
+  type SprintId,
 } from '../lib/board'
 import type { BoardAction } from '../lib/boardReducer'
 import { formatIst } from '../lib/formatIst'
@@ -74,6 +76,8 @@ export function CardDetailModal({
     card.checklist ? card.checklist.map((i) => ({ ...i })) : [],
   )
   const [newSubtask, setNewSubtask] = useState('')
+  const [newComment, setNewComment] = useState('')
+  const [commentAuthor, setCommentAuthor] = useState<AssigneeId>('jbp')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -147,7 +151,25 @@ export function CardDetailModal({
     setNewSubtask('')
   }
 
+  const setSprint = (sprintId: SprintId | null) => {
+    dispatch({ type: 'SET_CARD_SPRINT', cardId: card.id, sprintId })
+  }
+
+  const postComment = () => {
+    const text = newComment.trim()
+    if (!text) return
+    dispatch({
+      type: 'ADD_COMMENT',
+      cardId: card.id,
+      authorId: commentAuthor,
+      text,
+    })
+    setNewComment('')
+  }
+
   const checklistDone = checklist.filter((i) => i.done).length
+  const sprintOrder = board.sprintOrder ?? []
+  const sprints = board.sprints ?? {}
 
   return (
     <div
@@ -223,6 +245,29 @@ export function CardDetailModal({
                   return (
                     <option key={cid} value={cid}>
                       {c.name}
+                    </option>
+                  )
+                })}
+              </select>
+            </label>
+
+            <label className="modal-field">
+              <span className="modal-field-label">Sprint</span>
+              <select
+                className="modal-select"
+                value={card.sprintId ?? ''}
+                onChange={(e) =>
+                  setSprint(e.target.value === '' ? null : e.target.value)
+                }
+                aria-label="Sprint"
+              >
+                <option value="">Backlog</option>
+                {sprintOrder.map((sid) => {
+                  const s = sprints[sid]
+                  if (!s) return null
+                  return (
+                    <option key={sid} value={sid}>
+                      {s.name} ({s.state})
                     </option>
                   )
                 })}
@@ -484,6 +529,76 @@ export function CardDetailModal({
               </ul>
             </div>
           )}
+
+          <div className="modal-field">
+            <span className="modal-field-label">
+              Comments
+              {card.comments && card.comments.length > 0 && (
+                <span className="checklist-progress-inline">
+                  {' '}
+                  · {card.comments.length}
+                </span>
+              )}
+            </span>
+            {card.comments && card.comments.length > 0 && (
+              <ul className="comments-list">
+                {card.comments.map((cm) => {
+                  const author = TEAM[cm.authorId]
+                  return (
+                    <li key={cm.id} className="comment-item">
+                      <span
+                        className="avatar avatar-sm"
+                        style={{ background: author.color }}
+                        aria-hidden="true"
+                      >
+                        {assigneeInitials(cm.authorId)}
+                      </span>
+                      <div className="comment-body">
+                        <div className="comment-head">
+                          <strong>{author.name}</strong>
+                          <time>{formatIst(new Date(cm.at))}</time>
+                        </div>
+                        <p className="comment-text">{cm.text}</p>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            <div className="comment-compose">
+              <select
+                className="modal-select comment-author"
+                value={commentAuthor}
+                onChange={(e) =>
+                  setCommentAuthor(e.target.value as AssigneeId)
+                }
+                aria-label="Comment author"
+              >
+                {ASSIGNEE_IDS.filter((a) => a !== 'unassigned').map((id) => (
+                  <option key={id} value={id}>
+                    {TEAM[id].name}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                className="modal-textarea comment-input"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment…"
+                rows={2}
+                maxLength={500}
+                aria-label="New comment"
+              />
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={postComment}
+                disabled={!newComment.trim()}
+              >
+                Post
+              </button>
+            </div>
+          </div>
         </div>
 
         <footer className="modal-foot">

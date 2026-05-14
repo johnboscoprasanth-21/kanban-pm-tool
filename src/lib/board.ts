@@ -28,6 +28,27 @@ export interface ChecklistItem {
   done: boolean
 }
 
+export type SprintId = string
+export type SprintState = 'planning' | 'active' | 'completed'
+
+export interface Sprint {
+  id: SprintId
+  name: string
+  state: SprintState
+  /** epoch ms */
+  startedAt?: number
+  /** epoch ms */
+  completedAt?: number
+}
+
+export interface Comment {
+  id: string
+  authorId: AssigneeId
+  text: string
+  /** epoch ms */
+  at: number
+}
+
 export interface HistoryEntry {
   /** epoch ms */
   at: number
@@ -54,6 +75,10 @@ export interface Card {
   points?: number
   assignee?: AssigneeId
   checklist?: ChecklistItem[]
+  // ── Phase 9: agile + collaboration ───────────────────
+  /** Sprint membership. undefined = in the backlog. */
+  sprintId?: SprintId
+  comments?: Comment[]
 }
 
 /** Preset team for the assignee dropdown. */
@@ -167,6 +192,10 @@ export interface Board {
   keyPrefix?: string
   /** Next sequence number to assign. Starts at 1. */
   nextIssueNumber?: number
+  // ── Phase 9: sprints ─────────────────────────────────
+  sprints?: Record<SprintId, Sprint>
+  sprintOrder?: SprintId[]
+  activeSprintId?: SprintId
 }
 
 /** Seed board used in Phase 1. Replaced by user data once CRUD ships in Phase 2. */
@@ -175,6 +204,21 @@ export const SAMPLE_BOARD: Board = {
   name: 'KRA Sprint 14',
   keyPrefix: 'KAN',
   nextIssueNumber: 9,
+  sprints: {
+    'sprint-14': {
+      id: 'sprint-14',
+      name: 'Sprint 14',
+      state: 'active',
+      startedAt: 1715000000000,
+    },
+    'sprint-15': {
+      id: 'sprint-15',
+      name: 'Sprint 15',
+      state: 'planning',
+    },
+  },
+  sprintOrder: ['sprint-14', 'sprint-15'],
+  activeSprintId: 'sprint-14',
   columnIds: ['col-todo', 'col-progress', 'col-review', 'col-done'],
   columns: {
     'col-todo': {
@@ -207,6 +251,7 @@ export const SAMPLE_BOARD: Board = {
       type: 'task',
       points: 3,
       assignee: 'pri',
+      sprintId: 'sprint-14',
     },
     c2: {
       id: 'c2',
@@ -216,10 +261,25 @@ export const SAMPLE_BOARD: Board = {
       type: 'story',
       points: 5,
       assignee: 'jbp',
+      sprintId: 'sprint-14',
       checklist: [
         { id: 'cl-1', text: 'Choose sensor strategy', done: true },
         { id: 'cl-2', text: 'Write spike test', done: false },
         { id: 'cl-3', text: 'Document trade-offs', done: false },
+      ],
+      comments: [
+        {
+          id: 'cm-1',
+          authorId: 'pri',
+          text: 'Reviewed the dnd-kit docs — closestCorners looks right for Kanban.',
+          at: 1715100000000,
+        },
+        {
+          id: 'cm-2',
+          authorId: 'jbp',
+          text: 'Agreed. Let me write the spike branch next.',
+          at: 1715103600000,
+        },
       ],
     },
     c3: {
@@ -232,6 +292,7 @@ export const SAMPLE_BOARD: Board = {
       priority: 'high',
       labels: ['feature'],
       assignee: 'raj',
+      sprintId: 'sprint-14',
     },
     c4: {
       id: 'c4',
@@ -243,6 +304,7 @@ export const SAMPLE_BOARD: Board = {
       priority: 'medium',
       labels: ['design'],
       assignee: 'jbp',
+      sprintId: 'sprint-14',
     },
     c5: {
       id: 'c5',
@@ -254,6 +316,7 @@ export const SAMPLE_BOARD: Board = {
       priority: 'low',
       labels: ['feature', 'docs'],
       assignee: 'arn',
+      sprintId: 'sprint-14',
     },
     c6: {
       id: 'c6',
@@ -265,6 +328,7 @@ export const SAMPLE_BOARD: Board = {
       priority: 'high',
       labels: ['urgent'],
       assignee: 'jbp',
+      sprintId: 'sprint-14',
     },
     c7: {
       id: 'c7',
@@ -274,6 +338,7 @@ export const SAMPLE_BOARD: Board = {
       type: 'task',
       points: 1,
       assignee: 'jbp',
+      sprintId: 'sprint-14',
     },
     c8: {
       id: 'c8',
@@ -283,6 +348,7 @@ export const SAMPLE_BOARD: Board = {
       type: 'bug',
       points: 2,
       assignee: 'meh',
+      sprintId: 'sprint-14',
     },
   },
 }

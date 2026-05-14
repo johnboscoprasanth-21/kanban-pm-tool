@@ -26,6 +26,8 @@ interface KanbanColumnProps {
   filter?: Filter
   onOpenCard?: (cardId: string) => void
   canDeleteColumn?: boolean
+  /** If set, only show cards with this sprintId. */
+  scopeSprintId?: string | null
 }
 
 export function KanbanColumn({
@@ -36,9 +38,13 @@ export function KanbanColumn({
   filter,
   onOpenCard,
   canDeleteColumn = true,
+  scopeSprintId,
 }: KanbanColumnProps) {
   const column = board.columns[columnId]
-  const allCards = cardsInColumn(board, columnId)
+  const allCards = cardsInColumn(board, columnId).filter((c) => {
+    if (scopeSprintId === undefined || scopeSprintId === null) return true
+    return c.sprintId === scopeSprintId
+  })
   const filtered = allCards.filter(
     (c) => matchesQuery(c, query) && (filter ? matchesFilter(c, filter) : true),
   )

@@ -23,6 +23,8 @@ import { KanbanColumn } from './KanbanColumn'
 import { KanbanCard } from './KanbanCard'
 
 interface KanbanBoardProps {
+  /** When set, only cards with this sprintId are shown. */
+  scopeSprintId?: string | null
   board: Board
   dispatch: Dispatch<BoardAction>
   query?: string
@@ -49,6 +51,7 @@ export function KanbanBoard({
   onOpenCard,
   onExport,
   onImport,
+  scopeSprintId,
 }: KanbanBoardProps) {
   const [activeDrag, setActiveDrag] = useState<ActiveDrag>(null)
   const [addingColumn, setAddingColumn] = useState(false)
@@ -209,6 +212,7 @@ export function KanbanBoard({
                 filter={filter}
                 onOpenCard={onOpenCard}
                 canDeleteColumn={canDeleteColumn}
+                scopeSprintId={scopeSprintId}
               />
             ))}
             {addingColumn ? (

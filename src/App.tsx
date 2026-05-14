@@ -16,6 +16,8 @@ import { BoardStats } from './components/BoardStats'
 import { UndoToast } from './components/UndoToast'
 import { CardDetailModal } from './components/CardDetailModal'
 import { ShortcutsOverlay } from './components/ShortcutsOverlay'
+import { SprintControl } from './components/SprintControl'
+import { BacklogView } from './components/BacklogView'
 import type { Board, Card, CardId, ColumnId } from './lib/board'
 import { activeBoard } from './lib/workspace'
 import {
@@ -84,6 +86,7 @@ function App() {
   const [openCardId, setOpenCardId] = useState<CardId | null>(null)
   const [undo, setUndo] = useState<UndoState | null>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [view, setView] = useState<'board' | 'backlog'>('board')
   const searchRef = useRef<HTMLInputElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -216,16 +219,50 @@ function App() {
         <FilterBar filter={filter} onChange={setFilter} />
       </div>
 
+      <div className="view-bar">
+        <div className="view-tabs" role="tablist" aria-label="View">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'board'}
+            className={`view-tab ${view === 'board' ? 'is-on' : ''}`}
+            onClick={() => setView('board')}
+          >
+            Board
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'backlog'}
+            className={`view-tab ${view === 'backlog' ? 'is-on' : ''}`}
+            onClick={() => setView('backlog')}
+          >
+            Backlog
+          </button>
+        </div>
+        <SprintControl board={board} dispatch={dispatch} />
+      </div>
+
       <main className="app-main">
-        <KanbanBoard
-          board={board}
-          dispatch={dispatch}
-          query={query}
-          filter={filter}
-          onOpenCard={setOpenCardId}
-          onExport={handleExport}
-          onImport={handleImportClick}
-        />
+        {view === 'board' ? (
+          <KanbanBoard
+            board={board}
+            dispatch={dispatch}
+            query={query}
+            filter={filter}
+            onOpenCard={setOpenCardId}
+            onExport={handleExport}
+            onImport={handleImportClick}
+            scopeSprintId={board.activeSprintId ?? null}
+          />
+        ) : (
+          <BacklogView
+            board={board}
+            query={query}
+            filter={filter}
+            onOpenCard={setOpenCardId}
+          />
+        )}
 
         <input
           ref={importInputRef}
