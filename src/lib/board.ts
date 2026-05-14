@@ -19,6 +19,14 @@ export type LabelId =
   | 'blocked'
   | 'urgent'
 export type Priority = 'low' | 'medium' | 'high'
+export type IssueType = 'story' | 'task' | 'bug' | 'epic'
+export type AssigneeId = 'jbp' | 'pri' | 'raj' | 'arn' | 'meh' | 'unassigned'
+
+export interface ChecklistItem {
+  id: string
+  text: string
+  done: boolean
+}
 
 export interface HistoryEntry {
   /** epoch ms */
@@ -38,6 +46,78 @@ export interface Card {
   createdAt?: number
   /** Recent activity entries (most recent last). Capped at 10. */
   history?: HistoryEntry[]
+  // ── Phase 8: Jira essentials ─────────────────────────
+  /** e.g. "KAN-42" — assigned at creation time, never changes. */
+  key?: string
+  type?: IssueType
+  /** Fibonacci scale: 1, 2, 3, 5, 8, 13. */
+  points?: number
+  assignee?: AssigneeId
+  checklist?: ChecklistItem[]
+}
+
+/** Preset team for the assignee dropdown. */
+export const TEAM: Record<AssigneeId, { name: string; color: string }> = {
+  jbp: { name: 'John Bosco Prasanth', color: '#4f46e5' },
+  pri: { name: 'Priya M.', color: '#ec4899' },
+  raj: { name: 'Raj K.', color: '#10b981' },
+  arn: { name: 'Arnav S.', color: '#f59e0b' },
+  meh: { name: 'Mehul P.', color: '#06b6d4' },
+  unassigned: { name: 'Unassigned', color: '#6b7280' },
+}
+
+export const ASSIGNEE_IDS: AssigneeId[] = [
+  'jbp',
+  'pri',
+  'raj',
+  'arn',
+  'meh',
+  'unassigned',
+]
+
+/** Initials shown in the small avatar chip. */
+export function assigneeInitials(id: AssigneeId | undefined): string {
+  if (!id || id === 'unassigned') return '?'
+  const name = TEAM[id].name
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('')
+}
+
+export const ISSUE_TYPES: Record<
+  IssueType,
+  { name: string; color: string; icon: string }
+> = {
+  story: { name: 'Story', color: '#16a34a', icon: 'S' },
+  task: { name: 'Task', color: '#2563eb', icon: 'T' },
+  bug: { name: 'Bug', color: '#dc2626', icon: 'B' },
+  epic: { name: 'Epic', color: '#9333ea', icon: 'E' },
+}
+
+export const ISSUE_TYPE_IDS: IssueType[] = ['story', 'task', 'bug', 'epic']
+
+/** Fibonacci-ish scale used by Jira style point pickers. */
+export const POINT_OPTIONS: number[] = [1, 2, 3, 5, 8, 13]
+
+/** Infer a key prefix from a free-text board name. */
+export function inferKeyPrefix(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return 'KAN'
+  const words = trimmed.split(/\s+/).filter(Boolean)
+  let result: string
+  if (words.length >= 2) {
+    result = words
+      .slice(0, 4)
+      .map((w) => w[0] ?? '')
+      .join('')
+      .toUpperCase()
+  } else {
+    result = words[0].slice(0, 3).toUpperCase()
+  }
+  result = result.replace(/[^A-Z0-9]/g, '')
+  return result || 'KAN'
 }
 
 /** Append a history entry, keeping at most 10 entries. */
@@ -83,12 +163,18 @@ export interface Board {
   columnIds: ColumnId[]
   columns: Record<ColumnId, Column>
   cards: Record<CardId, Card>
+  /** Issue-key prefix, e.g. "KAN". Migrated from name on first ADD_CARD if absent. */
+  keyPrefix?: string
+  /** Next sequence number to assign. Starts at 1. */
+  nextIssueNumber?: number
 }
 
 /** Seed board used in Phase 1. Replaced by user data once CRUD ships in Phase 2. */
 export const SAMPLE_BOARD: Board = {
   id: 'board-default',
   name: 'KRA Sprint 14',
+  keyPrefix: 'KAN',
+  nextIssueNumber: 9,
   columnIds: ['col-todo', 'col-progress', 'col-review', 'col-done'],
   columns: {
     'col-todo': {
@@ -115,51 +201,88 @@ export const SAMPLE_BOARD: Board = {
   cards: {
     c1: {
       id: 'c1',
+      key: 'KAN-1',
       title: 'Design board switcher UI',
       description: 'Sketch the header dropdown for Phase 4.',
+      type: 'task',
+      points: 3,
+      assignee: 'pri',
     },
     c2: {
       id: 'c2',
+      key: 'KAN-2',
       title: 'Plan dnd-kit integration',
       description: 'Pick sensor strategy and write a spike test.',
+      type: 'story',
+      points: 5,
+      assignee: 'jbp',
+      checklist: [
+        { id: 'cl-1', text: 'Choose sensor strategy', done: true },
+        { id: 'cl-2', text: 'Write spike test', done: false },
+        { id: 'cl-3', text: 'Document trade-offs', done: false },
+      ],
     },
     c3: {
       id: 'c3',
+      key: 'KAN-3',
       title: 'Add card priority field',
       description: 'High / Medium / Low with colour-coded pills.',
+      type: 'story',
+      points: 2,
       priority: 'high',
       labels: ['feature'],
+      assignee: 'raj',
     },
     c4: {
       id: 'c4',
+      key: 'KAN-4',
       title: 'Card create/edit modal',
       description: 'Inline edit on title; modal for details.',
+      type: 'task',
+      points: 5,
       priority: 'medium',
       labels: ['design'],
+      assignee: 'jbp',
     },
     c5: {
       id: 'c5',
+      key: 'KAN-5',
       title: 'localStorage persistence',
       description: 'Single-board key for Phase 2; multi-key in Phase 4.',
+      type: 'epic',
+      points: 8,
       priority: 'low',
       labels: ['feature', 'docs'],
+      assignee: 'arn',
     },
     c6: {
       id: 'c6',
+      key: 'KAN-6',
       title: 'CI/CD pipeline wiring',
       description: 'Lint → Test → Build → Deploy to GitHub Pages.',
+      type: 'task',
+      points: 3,
       priority: 'high',
       labels: ['urgent'],
+      assignee: 'jbp',
     },
     c7: {
       id: 'c7',
+      key: 'KAN-7',
       title: 'Scaffold Vite + React + TS',
       description: 'Phase 1 foundation done.',
+      type: 'task',
+      points: 1,
+      assignee: 'jbp',
     },
     c8: {
       id: 'c8',
-      title: 'Define data model',
-      description: 'Board / Column / Card shape locked in.',
+      key: 'KAN-8',
+      title: 'Bug: Vite base path on Pages',
+      description: 'Assets 404 when base path mismatched.',
+      type: 'bug',
+      points: 2,
+      assignee: 'meh',
     },
   },
 }

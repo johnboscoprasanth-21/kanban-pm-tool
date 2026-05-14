@@ -5,12 +5,20 @@ import {
   type FormEvent,
 } from 'react'
 import {
+  ASSIGNEE_IDS,
+  ISSUE_TYPES,
+  ISSUE_TYPE_IDS,
   LABELS,
+  POINT_OPTIONS,
   PRIORITIES,
   PRIORITY_META,
+  TEAM,
+  type AssigneeId,
   type Board,
   type Card,
+  type ChecklistItem,
   type ColumnId,
+  type IssueType,
   type LabelId,
   type Priority,
 } from '../lib/board'
@@ -39,6 +47,12 @@ function inputValueToEpoch(v: string): number | undefined {
   return Number.isNaN(ms) ? undefined : ms
 }
 
+function makeChecklistItemId(): string {
+  return `cl-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 6)}`
+}
+
 export function CardDetailModal({
   card,
   columnId,
@@ -51,8 +65,16 @@ export function CardDetailModal({
   const [priority, setPriority] = useState<Priority | undefined>(card.priority)
   const [labels, setLabels] = useState<LabelId[]>(card.labels ?? [])
   const [dueInput, setDueInput] = useState(epochToInputValue(card.dueDate))
+  const [type, setType] = useState<IssueType | undefined>(card.type)
+  const [points, setPoints] = useState<number | undefined>(card.points)
+  const [assignee, setAssignee] = useState<AssigneeId | undefined>(
+    card.assignee,
+  )
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(
+    card.checklist ? card.checklist.map((i) => ({ ...i })) : [],
+  )
+  const [newSubtask, setNewSubtask] = useState('')
 
-  // Esc to close
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -73,6 +95,10 @@ export function CardDetailModal({
         priority,
         labels,
         dueDate: inputValueToEpoch(dueInput),
+        type,
+        points,
+        assignee,
+        checklist,
       },
     })
     onClose()
@@ -101,6 +127,28 @@ export function CardDetailModal({
     )
   }
 
+  const toggleChecklistItem = (id: string) => {
+    setChecklist((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, done: !it.done } : it)),
+    )
+  }
+
+  const removeChecklistItem = (id: string) => {
+    setChecklist((prev) => prev.filter((it) => it.id !== id))
+  }
+
+  const addChecklistItem = () => {
+    const text = newSubtask.trim()
+    if (!text) return
+    setChecklist((prev) => [
+      ...prev,
+      { id: makeChecklistItemId(), text, done: false },
+    ])
+    setNewSubtask('')
+  }
+
+  const checklistDone = checklist.filter((i) => i.done).length
+
   return (
     <div
       className="modal-backdrop"
@@ -113,6 +161,18 @@ export function CardDetailModal({
     >
       <form className="modal-card" onSubmit={save}>
         <header className="modal-head">
+          <div className="modal-key-block">
+            {card.key && <span className="modal-key">{card.key}</span>}
+            {type && (
+              <span
+                className="type-icon type-modal"
+                style={{ background: ISSUE_TYPES[type].color }}
+                title={ISSUE_TYPES[type].name}
+              >
+                {ISSUE_TYPES[type].icon}
+              </span>
+            )}
+          </div>
           <input
             type="text"
             className="modal-title"
@@ -141,7 +201,7 @@ export function CardDetailModal({
               className="modal-textarea"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={5}
+              rows={4}
               placeholder="Add a description…"
               maxLength={1000}
               aria-label="Card description"
@@ -181,12 +241,107 @@ export function CardDetailModal({
             </label>
           </div>
 
+          <div className="modal-row">
+            <div className="modal-field">
+              <span className="modal-field-label">Issue type</span>
+              <div className="type-picker" role="radiogroup" aria-label="Type">
+                {ISSUE_TYPE_IDS.map((t) => {
+                  const meta = ISSUE_TYPES[t]
+                  const on = type === t
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      className={`type-btn ${on ? 'is-on' : ''}`}
+                      onClick={() => setType(on ? undefined : t)}
+                      aria-pressed={on}
+                      style={
+                        on
+                          ? {
+                              background: meta.color,
+                              borderColor: meta.color,
+                              color: '#fff',
+                            }
+                          : { borderColor: meta.color, color: meta.color }
+                      }
+                    >
+                      <span
+                        className="type-chip-icon"
+                        style={
+                          on
+                            ? { background: '#ffffff33', color: '#fff' }
+                            : { background: meta.color, color: '#fff' }
+                        }
+                      >
+                        {meta.icon}
+                      </span>
+                      {meta.name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <label className="modal-field">
+              <span className="modal-field-label">Assignee</span>
+              <select
+                className="modal-select"
+                value={assignee ?? 'unassigned'}
+                onChange={(e) =>
+                  setAssignee(
+                    e.target.value === 'unassigned'
+                      ? 'unassigned'
+                      : (e.target.value as AssigneeId),
+                  )
+                }
+                aria-label="Assignee"
+              >
+                {ASSIGNEE_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {TEAM[id].name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           <div className="modal-field">
-            <span className="modal-field-label">Priority</span>
-            <div className="priority-picker" role="radiogroup" aria-label="Priority">
+            <span className="modal-field-label">Story points</span>
+            <div className="points-picker" role="radiogroup" aria-label="Story points">
               <button
                 type="button"
-                className={`priority-btn ${priority === undefined ? 'is-on' : ''}`}
+                className={`points-btn ${points === undefined ? 'is-on' : ''}`}
+                onClick={() => setPoints(undefined)}
+                aria-pressed={points === undefined}
+              >
+                –
+              </button>
+              {POINT_OPTIONS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`points-btn ${points === p ? 'is-on' : ''}`}
+                  onClick={() => setPoints(p)}
+                  aria-pressed={points === p}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="modal-field">
+            <span className="modal-field-label">Priority</span>
+            <div
+              className="priority-picker"
+              role="radiogroup"
+              aria-label="Priority"
+            >
+              <button
+                type="button"
+                className={`priority-btn ${
+                  priority === undefined ? 'is-on' : ''
+                }`}
                 onClick={() => setPriority(undefined)}
                 aria-pressed={priority === undefined}
               >
@@ -238,6 +393,73 @@ export function CardDetailModal({
             </div>
           </div>
 
+          <div className="modal-field">
+            <span className="modal-field-label">
+              Checklist
+              {checklist.length > 0 && (
+                <span className="checklist-progress-inline">
+                  {' '}
+                  · {checklistDone} of {checklist.length} done
+                </span>
+              )}
+            </span>
+            {checklist.length > 0 && (
+              <ul className="checklist">
+                {checklist.map((it) => (
+                  <li
+                    key={it.id}
+                    className={`checklist-item ${it.done ? 'is-done' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={it.done}
+                      onChange={() => toggleChecklistItem(it.id)}
+                      aria-label={
+                        it.done
+                          ? `Mark "${it.text}" not done`
+                          : `Mark "${it.text}" done`
+                      }
+                    />
+                    <span className="checklist-text">{it.text}</span>
+                    <button
+                      type="button"
+                      className="checklist-remove"
+                      onClick={() => removeChecklistItem(it.id)}
+                      aria-label={`Remove subtask: ${it.text}`}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="checklist-add">
+              <input
+                type="text"
+                className="modal-input"
+                value={newSubtask}
+                onChange={(e) => setNewSubtask(e.target.value)}
+                placeholder="Add a subtask…"
+                maxLength={120}
+                aria-label="New subtask"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addChecklistItem()
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={addChecklistItem}
+                disabled={!newSubtask.trim()}
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
           {card.createdAt !== undefined && (
             <p className="modal-meta">
               Created {formatIst(new Date(card.createdAt))}
@@ -274,11 +496,7 @@ export function CardDetailModal({
             Delete
           </button>
           <div className="modal-foot-right">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={onClose}
-            >
+            <button type="button" className="btn btn-ghost" onClick={onClose}>
               Cancel
             </button>
             <button type="submit" className="btn btn-primary">

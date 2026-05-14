@@ -115,6 +115,10 @@ export function KanbanColumn({
   const countLabel = isFiltered
     ? `${filtered.length} of ${allCards.length}`
     : String(allCards.length)
+  const pointsTotal = filtered.reduce(
+    (sum, c) => sum + (c.points ?? 0),
+    0,
+  )
 
   return (
     <section
@@ -159,6 +163,15 @@ export function KanbanColumn({
           <span className="kanban-column-count" aria-label="Card count">
             {countLabel}
           </span>
+          {pointsTotal > 0 && (
+            <span
+              className="kanban-column-points"
+              aria-label="Total story points"
+              title="Total story points in this column"
+            >
+              {pointsTotal} pts
+            </span>
+          )}
           <button
             type="button"
             className="column-delete-btn"

@@ -1,6 +1,13 @@
 import {
+  ASSIGNEE_IDS,
+  ISSUE_TYPES,
+  ISSUE_TYPE_IDS,
   LABELS,
   PRIORITY_META,
+  TEAM,
+  assigneeInitials,
+  type AssigneeId,
+  type IssueType,
   type LabelId,
   type Priority,
 } from '../lib/board'
@@ -13,12 +20,29 @@ interface FilterBarProps {
 
 export function FilterBar({ filter, onChange }: FilterBarProps) {
   const toggle = (patch: Partial<Filter>) => onChange({ ...filter, ...patch })
+
   const toggleLabel = (id: LabelId) => {
     const has = filter.labels.includes(id)
     toggle({
       labels: has
         ? filter.labels.filter((l) => l !== id)
         : [...filter.labels, id],
+    })
+  }
+  const toggleType = (id: IssueType) => {
+    const has = filter.types.includes(id)
+    toggle({
+      types: has
+        ? filter.types.filter((t) => t !== id)
+        : [...filter.types, id],
+    })
+  }
+  const toggleAssignee = (id: AssigneeId) => {
+    const has = filter.assignees.includes(id)
+    toggle({
+      assignees: has
+        ? filter.assignees.filter((a) => a !== id)
+        : [...filter.assignees, id],
     })
   }
   const setPriority = (p: Priority | undefined) => toggle({ priority: p })
@@ -70,6 +94,72 @@ export function FilterBar({ filter, onChange }: FilterBarProps) {
           {PRIORITY_META[p].label}
         </button>
       ))}
+
+      <span className="filter-sep" aria-hidden="true" />
+
+      {ISSUE_TYPE_IDS.map((t) => {
+        const meta = ISSUE_TYPES[t]
+        const on = filter.types.includes(t)
+        return (
+          <button
+            key={t}
+            type="button"
+            className={`filter-chip type-chip ${on ? 'is-on' : ''}`}
+            style={
+              on
+                ? {
+                    background: meta.color,
+                    borderColor: meta.color,
+                    color: '#fff',
+                  }
+                : { borderColor: meta.color, color: meta.color }
+            }
+            onClick={() => toggleType(t)}
+            aria-pressed={on}
+            title={meta.name}
+          >
+            <span
+              className="type-chip-icon"
+              style={
+                on
+                  ? { background: '#ffffff33', color: '#fff' }
+                  : { background: meta.color, color: '#fff' }
+              }
+            >
+              {meta.icon}
+            </span>
+            {meta.name}
+          </button>
+        )
+      })}
+
+      <span className="filter-sep" aria-hidden="true" />
+
+      {ASSIGNEE_IDS.map((id) => {
+        const meta = TEAM[id]
+        const on = filter.assignees.includes(id)
+        return (
+          <button
+            key={id}
+            type="button"
+            className={`filter-chip assignee-chip ${on ? 'is-on' : ''}`}
+            onClick={() => toggleAssignee(id)}
+            aria-pressed={on}
+            title={meta.name}
+            aria-label={`Filter by assignee: ${meta.name}`}
+          >
+            <span
+              className="avatar avatar-sm"
+              style={{ background: meta.color }}
+            >
+              {assigneeInitials(id)}
+            </span>
+            <span className="filter-chip-text">
+              {id === 'unassigned' ? 'Unassigned' : meta.name.split(' ')[0]}
+            </span>
+          </button>
+        )
+      })}
 
       <span className="filter-sep" aria-hidden="true" />
 

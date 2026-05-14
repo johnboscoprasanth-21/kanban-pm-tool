@@ -94,4 +94,20 @@ describe('matchesFilter', () => {
       matchesFilter(card({ priority: 'high', labels: ['bug'] }), f),
     ).toBe(false)
   })
+
+  it('type filter passes only matching issue types', () => {
+    const f = { ...EMPTY_FILTER, types: ['bug' as const] }
+    expect(matchesFilter(card({ type: 'bug' }), f)).toBe(true)
+    expect(matchesFilter(card({ type: 'story' }), f)).toBe(false)
+    expect(matchesFilter(card({}), f)).toBe(false)
+  })
+
+  it('assignee filter treats missing as unassigned', () => {
+    const f = { ...EMPTY_FILTER, assignees: ['unassigned' as const] }
+    expect(matchesFilter(card({}), f)).toBe(true)
+    expect(matchesFilter(card({ assignee: 'jbp' }), f)).toBe(false)
+    const f2 = { ...EMPTY_FILTER, assignees: ['jbp' as const] }
+    expect(matchesFilter(card({ assignee: 'jbp' }), f2)).toBe(true)
+    expect(matchesFilter(card({ assignee: 'pri' }), f2)).toBe(false)
+  })
 })

@@ -2,8 +2,11 @@ import { type CSSProperties, type Dispatch } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
+  ISSUE_TYPES,
   LABELS,
   PRIORITY_META,
+  TEAM,
+  assigneeInitials,
   type Card,
   type ColumnId,
 } from '../lib/board'
@@ -48,6 +51,13 @@ export function KanbanCard({
     if (onOpen) onOpen(card.id)
   }
 
+  const typeMeta = card.type ? ISSUE_TYPES[card.type] : null
+  const assigneeMeta = card.assignee
+    ? TEAM[card.assignee]
+    : null
+  const checklistTotal = card.checklist?.length ?? 0
+  const checklistDone = card.checklist?.filter((c) => c.done).length ?? 0
+
   return (
     <article
       ref={isOverlay ? undefined : sortable.setNodeRef}
@@ -65,7 +75,7 @@ export function KanbanCard({
       }}
       role="button"
       tabIndex={0}
-      aria-label={`Open card: ${card.title}`}
+      aria-label={`Open card: ${card.key ? card.key + ' — ' : ''}${card.title}`}
       {...(isOverlay ? {} : sortable.attributes)}
       {...(isOverlay ? {} : sortable.listeners)}
     >
@@ -102,7 +112,17 @@ export function KanbanCard({
         </div>
       )}
 
-      <h3 className="kanban-card-title">
+      <div className="card-title-row">
+        {typeMeta && (
+          <span
+            className={`type-icon type-${card.type}`}
+            style={{ background: typeMeta.color }}
+            title={typeMeta.name}
+            aria-label={`Type: ${typeMeta.name}`}
+          >
+            {typeMeta.icon}
+          </span>
+        )}
         {card.priority && (
           <span
             className={`priority-dot priority-${card.priority}`}
@@ -110,23 +130,55 @@ export function KanbanCard({
             aria-label={`${PRIORITY_META[card.priority].label} priority`}
           />
         )}
-        {card.title}
-      </h3>
+        <h3 className="kanban-card-title">{card.title}</h3>
+      </div>
 
       {card.description && (
         <p className="kanban-card-desc">{card.description}</p>
       )}
 
-      {card.dueDate !== undefined && (
-        <div
-          className={`card-due ${overdue ? 'is-overdue-text' : ''}`}
-          aria-label="Due date"
-        >
-          <span aria-hidden="true">📅</span>{' '}
-          {formatIstDate(new Date(card.dueDate))}
-          {overdue && <span className="overdue-tag">Overdue</span>}
-        </div>
-      )}
+      <div className="card-foot">
+        <span className="card-foot-left">
+          {card.key && <span className="card-key" title="Issue key">{card.key}</span>}
+          {checklistTotal > 0 && (
+            <span
+              className={`checklist-progress ${
+                checklistDone === checklistTotal ? 'is-done' : ''
+              }`}
+              title="Checklist progress"
+              aria-label={`Checklist: ${checklistDone} of ${checklistTotal} done`}
+            >
+              ☑ {checklistDone}/{checklistTotal}
+            </span>
+          )}
+          {card.dueDate !== undefined && (
+            <span
+              className={`card-due-pill ${overdue ? 'is-overdue-text' : ''}`}
+              title={overdue ? 'Overdue' : 'Due date'}
+              aria-label="Due date"
+            >
+              📅 {formatIstDate(new Date(card.dueDate))}
+            </span>
+          )}
+        </span>
+        <span className="card-foot-right">
+          {card.points !== undefined && (
+            <span className="card-points" title="Story points">
+              {card.points}
+            </span>
+          )}
+          {assigneeMeta && (
+            <span
+              className="avatar"
+              style={{ background: assigneeMeta.color }}
+              title={`Assignee: ${assigneeMeta.name}`}
+              aria-label={`Assignee: ${assigneeMeta.name}`}
+            >
+              {assigneeInitials(card.assignee)}
+            </span>
+          )}
+        </span>
+      </div>
     </article>
   )
 }

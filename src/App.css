@@ -1584,6 +1584,305 @@
   cursor: pointer;
 }
 
+/* ── Phase 8: Jira essentials ────────────────────────── */
+
+/* Type icon (badge with single letter) */
+.type-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.type-icon.type-modal {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.type-chip-icon {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fff;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+}
+
+/* Card title row reorganised to fit type/priority icons */
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+  padding-right: 1.25rem; /* leave room for delete X */
+}
+
+.card-title-row .kanban-card-title {
+  margin: 0;
+  padding-right: 0;
+  flex: 1 1 auto;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.priority-dot {
+  flex: 0 0 auto;
+  margin-right: 0;
+}
+
+/* Card foot row: key + checklist + due | points + avatar */
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-foot-left,
+.card-foot-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.card-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-soft);
+  background: var(--surface-2);
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+}
+
+.checklist-progress {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.checklist-progress.is-done {
+  color: var(--rag-green, #16a34a);
+}
+
+.card-due-pill {
+  font-size: 0.7rem;
+}
+
+.card-due-pill.is-overdue-text {
+  color: var(--overdue);
+  font-weight: 600;
+}
+
+.card-points {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.4rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+/* Avatar (assignee initials) */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  background: var(--muted);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+}
+
+.avatar.avatar-sm {
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.62rem;
+}
+
+/* Column header points total */
+.kanban-column-points {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--primary-soft);
+  color: var(--primary);
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* FilterBar: type and assignee chips */
+.filter-chip.type-chip,
+.filter-chip.assignee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+}
+
+.filter-chip-text {
+  font-size: 0.76rem;
+}
+
+/* Modal head: issue key + type */
+.modal-key-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.modal-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  letter-spacing: 0.02em;
+}
+
+/* Type picker buttons in modal */
+.type-picker,
+.points-picker {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.type-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.points-btn {
+  min-width: 2.2rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.points-btn:hover {
+  border-color: var(--border-strong);
+}
+
+.points-btn.is-on {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* Checklist editor inside the modal */
+.checklist-progress-inline {
+  text-transform: none;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0;
+  font-size: 0.78rem;
+}
+
+.checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.checklist-item.is-done .checklist-text {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.checklist-text {
+  flex: 1 1 auto;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.checklist-remove {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  width: 1.3rem;
+  height: 1.3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+}
+
+.checklist-remove:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.checklist-add {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.checklist-add input {
+  flex: 1 1 auto;
+}
+
 /* ── Utility ─────────────────────────────────────────── */
 .visually-hidden {
   position: absolute;

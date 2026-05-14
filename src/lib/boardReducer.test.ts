@@ -24,6 +24,33 @@ describe('boardReducer · ADD_CARD', () => {
     expect(added.title).toBe('New thing')
   })
 
+  it('mints an issue key from the board prefix and counter', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_CARD',
+      columnId: 'col-todo',
+      title: 'Key-test',
+    })
+    const ids = next.columns['col-todo'].cardIds
+    const added = next.cards[ids[ids.length - 1]]
+    // Sample has prefix=KAN and nextIssueNumber=9, so this should be KAN-9.
+    expect(added.key).toBe('KAN-9')
+    expect(next.nextIssueNumber).toBe(10)
+  })
+
+  it('infers prefix from board name on legacy boards lacking one', () => {
+    const legacy = { ...SAMPLE_BOARD, keyPrefix: undefined, nextIssueNumber: undefined }
+    const next = boardReducer(legacy, {
+      type: 'ADD_CARD',
+      columnId: 'col-todo',
+      title: 'x',
+    })
+    const ids = next.columns['col-todo'].cardIds
+    const added = next.cards[ids[ids.length - 1]]
+    // "KRA Sprint 14" -> "KS1" (first letters)
+    expect(added.key).toMatch(/^KS1?-1$/)
+    expect(next.nextIssueNumber).toBe(2)
+  })
+
   it('trims whitespace and falls back to "Untitled" for empty title', () => {
     const next = boardReducer(SAMPLE_BOARD, {
       type: 'ADD_CARD',

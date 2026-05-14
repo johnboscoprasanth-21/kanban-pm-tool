@@ -8,6 +8,7 @@
 import {
   SAMPLE_BOARD,
   appendHistory,
+  inferKeyPrefix,
   type Board,
   type Card,
   type CardId,
@@ -61,13 +62,23 @@ export function boardReducer(state: Board, action: BoardAction): Board {
       if (!col) return state
       const id = makeCardId()
       const now = Date.now()
+      // Mint an issue key from the board prefix and counter. Migrates
+      // legacy boards (loaded from older storage) by inferring on demand.
+      const prefix = state.keyPrefix ?? inferKeyPrefix(state.name)
+      const num = state.nextIssueNumber ?? 1
+      const key = `${prefix}-${num}`
       return {
         ...state,
+        keyPrefix: prefix,
+        nextIssueNumber: num + 1,
         cards: {
           ...state.cards,
           [id]: {
             id,
+            key,
             title: action.title.trim() || 'Untitled',
+            type: 'task',
+            assignee: 'unassigned',
             createdAt: now,
             history: [{ at: now, text: `Created in "${col.name}"` }],
           },
