@@ -150,6 +150,113 @@ describe('boardReducer · RESET', () => {
   })
 })
 
+describe('boardReducer · ADD_COLUMN', () => {
+  it('appends a new empty column', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_COLUMN',
+      name: 'Blocked',
+    })
+    expect(next.columnIds.length).toBe(SAMPLE_BOARD.columnIds.length + 1)
+    const newId = next.columnIds[next.columnIds.length - 1]
+    expect(next.columns[newId].name).toBe('Blocked')
+    expect(next.columns[newId].cardIds).toEqual([])
+  })
+
+  it('falls back to "New column" on blank name', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'ADD_COLUMN',
+      name: '   ',
+    })
+    const newId = next.columnIds[next.columnIds.length - 1]
+    expect(next.columns[newId].name).toBe('New column')
+  })
+})
+
+describe('boardReducer · RENAME_COLUMN', () => {
+  it('renames an existing column', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'RENAME_COLUMN',
+      columnId: 'col-todo',
+      name: 'Backlog',
+    })
+    expect(next.columns['col-todo'].name).toBe('Backlog')
+  })
+
+  it('is a no-op on unknown column id', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'RENAME_COLUMN',
+      columnId: 'col-missing',
+      name: 'x',
+    })
+    expect(next).toBe(SAMPLE_BOARD)
+  })
+
+  it('is a no-op on blank name', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'RENAME_COLUMN',
+      columnId: 'col-todo',
+      name: '   ',
+    })
+    expect(next).toBe(SAMPLE_BOARD)
+  })
+})
+
+describe('boardReducer · DELETE_COLUMN', () => {
+  it('removes the column and all its cards', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'DELETE_COLUMN',
+      columnId: 'col-todo',
+    })
+    expect(next.columnIds).not.toContain('col-todo')
+    expect(next.columns['col-todo']).toBeUndefined()
+    expect(next.cards.c1).toBeUndefined()
+    expect(next.cards.c2).toBeUndefined()
+    expect(next.cards.c3).toBeUndefined()
+    // Other columns untouched
+    expect(next.columns['col-done']).toEqual(SAMPLE_BOARD.columns['col-done'])
+  })
+
+  it('refuses to delete the last remaining column', () => {
+    const single = {
+      ...SAMPLE_BOARD,
+      columnIds: ['col-todo'],
+      columns: { 'col-todo': SAMPLE_BOARD.columns['col-todo'] },
+    }
+    const next = boardReducer(single, {
+      type: 'DELETE_COLUMN',
+      columnId: 'col-todo',
+    })
+    expect(next).toBe(single)
+  })
+})
+
+describe('boardReducer · RESTORE_CARD', () => {
+  it('reinserts a removed card at the given index', () => {
+    const deleted = boardReducer(SAMPLE_BOARD, {
+      type: 'DELETE_CARD',
+      cardId: 'c1',
+    })
+    const restored = boardReducer(deleted, {
+      type: 'RESTORE_CARD',
+      card: SAMPLE_BOARD.cards.c1,
+      columnId: 'col-todo',
+      atIndex: 0,
+    })
+    expect(restored.columns['col-todo'].cardIds[0]).toBe('c1')
+    expect(restored.cards.c1).toEqual(SAMPLE_BOARD.cards.c1)
+  })
+
+  it('refuses to restore if card id is already in cards map', () => {
+    const next = boardReducer(SAMPLE_BOARD, {
+      type: 'RESTORE_CARD',
+      card: SAMPLE_BOARD.cards.c1,
+      columnId: 'col-todo',
+      atIndex: 0,
+    })
+    expect(next).toBe(SAMPLE_BOARD)
+  })
+})
+
 describe('loadBoard / saveBoard', () => {
   it('round-trips a board through localStorage', () => {
     saveBoard(SAMPLE_BOARD)

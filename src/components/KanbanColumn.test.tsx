@@ -56,3 +56,17 @@ describe('KanbanColumn · add a card', () => {
     ).not.toBeInTheDocument()
   })
 })
+
+describe('KanbanColumn · rename column', () => {
+  it('opens inline rename input on header click', async () => {
+    const user = userEvent.setup()
+    render(<Harness columnId="col-todo" />)
+    await user.click(
+      screen.getByRole('button', { name: /Rename column: To Do/i }),
+    )
+    const input = screen.getByLabelText(/Rename column To Do/i)
+    await user.clear(input)
+    await user.type(input, 'Backlog{Enter}')
+    expect(screen.getByText('Backlog')).toBeInTheDocument()
+  })
+})

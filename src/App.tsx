@@ -1,32 +1,118 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import './App.css'
 import { IstClock } from './components/IstClock'
 import { KanbanBoard } from './components/KanbanBoard'
 import { BoardSwitcher } from './components/BoardSwitcher'
 import { SearchBar } from './components/SearchBar'
 import { ThemeToggle } from './components/ThemeToggle'
+import { FilterBar } from './components/FilterBar'
+import { BoardStats } from './components/BoardStats'
+import { UndoToast } from './components/UndoToast'
+import { CardDetailModal } from './components/CardDetailModal'
+import type { Card, CardId, ColumnId } from './lib/board'
 import { activeBoard } from './lib/workspace'
 import {
   workspaceReducer,
   loadWorkspace,
   saveWorkspace,
+  type WorkspaceAction,
 } from './lib/workspaceReducer'
 import { useTheme } from './lib/useTheme'
+import { EMPTY_FILTER, type Filter } from './lib/filters'
+
+interface UndoState {
+  card: Card
+  columnId: ColumnId
+  atIndex: number
+}
+
+function findCardLocation(
+  board: ReturnType<typeof activeBoard>,
+  cardId: CardId,
+): { columnId: ColumnId; atIndex: number } | null {
+  for (const colId of board.columnIds) {
+    const col = board.columns[colId]
+    const idx = col.cardIds.indexOf(cardId)
+    if (idx >= 0) return { columnId: colId, atIndex: idx }
+  }
+  return null
+}
 
 function App() {
-  const [workspace, dispatch] = useReducer(
+  const [workspace, baseDispatch] = useReducer(
     workspaceReducer,
     undefined,
     loadWorkspace,
   )
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<Filter>(EMPTY_FILTER)
   const [theme, , toggleTheme] = useTheme()
+  const [openCardId, setOpenCardId] = useState<CardId | null>(null)
+  const [undo, setUndo] = useState<UndoState | null>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  const workspaceRef = useRef(workspace)
+  useEffect(() => {
+    workspaceRef.current = workspace
+  }, [workspace])
 
   useEffect(() => {
     saveWorkspace(workspace)
   }, [workspace])
 
+  // Dispatch wrapper that captures a snapshot before DELETE_CARD so we
+  // can offer Undo.
+  const dispatch = useCallback((action: WorkspaceAction) => {
+    if (action.type === 'DELETE_CARD') {
+      const ws = workspaceRef.current
+      const board = ws.boards[ws.activeBoardId]
+      const card = board?.cards[action.cardId]
+      const loc = board && findCardLocation(board, action.cardId)
+      if (card && loc) {
+        setUndo({ card, columnId: loc.columnId, atIndex: loc.atIndex })
+      }
+    }
+    baseDispatch(action)
+  }, [])
+
+  // Keyboard shortcut: "/" focuses the search box (unless typing in an input).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '/') return
+      const t = e.target as HTMLElement | null
+      const tag = t?.tagName?.toLowerCase()
+      if (
+        tag === 'input' ||
+        tag === 'textarea' ||
+        tag === 'select' ||
+        t?.isContentEditable
+      ) {
+        return
+      }
+      e.preventDefault()
+      searchRef.current?.focus()
+      searchRef.current?.select()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const board = activeBoard(workspace)
+  const openCard = openCardId ? board.cards[openCardId] : null
+  const openCardColumn = openCardId
+    ? findCardLocation(board, openCardId)?.columnId
+    : null
+
+  const handleUndo = () => {
+    if (!undo) return
+    baseDispatch({
+      type: 'RESTORE_CARD',
+      card: undo.card,
+      columnId: undo.columnId,
+      atIndex: undo.atIndex,
+    })
+    setUndo(null)
+  }
 
   return (
     <div className="app">
@@ -43,7 +129,11 @@ function App() {
           </div>
         </div>
         <div className="header-right">
-          <SearchBar query={query} onChange={setQuery} />
+          <SearchBar
+            query={query}
+            onChange={setQuery}
+            inputRef={searchRef}
+          />
           <BoardSwitcher workspace={workspace} dispatch={dispatch} />
           <span className="phase-pill" title="Current development phase">
             {__APP_PHASE__}
@@ -53,8 +143,19 @@ function App() {
         </div>
       </header>
 
+      <div className="sub-header">
+        <BoardStats board={board} />
+        <FilterBar filter={filter} onChange={setFilter} />
+      </div>
+
       <main className="app-main">
-        <KanbanBoard board={board} dispatch={dispatch} query={query} />
+        <KanbanBoard
+          board={board}
+          dispatch={dispatch}
+          query={query}
+          filter={filter}
+          onOpenCard={setOpenCardId}
+        />
 
         <section className="build-card" aria-label="Build info">
           <h2>Build info</h2>
@@ -87,6 +188,25 @@ function App() {
           GitHub Actions
         </span>
       </footer>
+
+      {openCard && openCardColumn && (
+        <CardDetailModal
+          card={openCard}
+          columnId={openCardColumn}
+          board={board}
+          dispatch={dispatch}
+          onClose={() => setOpenCardId(null)}
+        />
+      )}
+
+      {undo && (
+        <UndoToast
+          key={undo.card.id}
+          message={`Deleted "${undo.card.title}"`}
+          onUndo={handleUndo}
+          onDismiss={() => setUndo(null)}
+        />
+      )}
     </div>
   )
 }

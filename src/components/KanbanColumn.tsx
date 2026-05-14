@@ -1,4 +1,9 @@
-import { useState, type Dispatch, type FormEvent } from 'react'
+import {
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -8,6 +13,7 @@ import type { Board, ColumnId } from '../lib/board'
 import { cardsInColumn } from '../lib/board'
 import type { BoardAction } from '../lib/boardReducer'
 import { matchesQuery } from '../lib/matchesQuery'
+import { matchesFilter, type Filter } from '../lib/filters'
 import { KanbanCard } from './KanbanCard'
 
 interface KanbanColumnProps {
@@ -15,6 +21,10 @@ interface KanbanColumnProps {
   columnId: ColumnId
   dispatch: Dispatch<BoardAction>
   query?: string
+  filter?: Filter
+  onOpenCard?: (cardId: string) => void
+  /** When > 1, allow this column to be deleted. */
+  canDeleteColumn?: boolean
 }
 
 export function KanbanColumn({
@@ -22,12 +32,19 @@ export function KanbanColumn({
   columnId,
   dispatch,
   query = '',
+  filter,
+  onOpenCard,
+  canDeleteColumn = true,
 }: KanbanColumnProps) {
   const column = board.columns[columnId]
   const allCards = cardsInColumn(board, columnId)
-  const filtered = allCards.filter((c) => matchesQuery(c, query))
+  const filtered = allCards.filter(
+    (c) => matchesQuery(c, query) && (filter ? matchesFilter(c, filter) : true),
+  )
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
+  const [renaming, setRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState(column?.name ?? '')
 
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
@@ -48,7 +65,45 @@ export function KanbanColumn({
     setAdding(false)
   }
 
-  const isFiltered = query.trim().length > 0
+  const startRename = () => {
+    setRenameValue(column.name)
+    setRenaming(true)
+  }
+
+  const commitRename = () => {
+    if (renameValue.trim() && renameValue !== column.name) {
+      dispatch({ type: 'RENAME_COLUMN', columnId, name: renameValue })
+    }
+    setRenaming(false)
+  }
+
+  const cancelRename = () => {
+    setRenameValue(column.name)
+    setRenaming(false)
+  }
+
+  const onRenameKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      commitRename()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      cancelRename()
+    }
+  }
+
+  const handleDeleteColumn = () => {
+    if (!canDeleteColumn) return
+    const note =
+      allCards.length === 0
+        ? ''
+        : `\n\nThis column has ${allCards.length} card(s). They will be deleted.`
+    if (confirm(`Delete column "${column.name}"?${note}`)) {
+      dispatch({ type: 'DELETE_COLUMN', columnId })
+    }
+  }
+
+  const isFiltered = query.trim().length > 0 || (filter && filtered.length !== allCards.length)
   const countLabel = isFiltered
     ? `${filtered.length} of ${allCards.length}`
     : String(allCards.length)
@@ -61,9 +116,43 @@ export function KanbanColumn({
       aria-label={`Column ${column.name}`}
     >
       <header className="kanban-column-head">
-        <h2 className="kanban-column-name">{column.name}</h2>
-        <span className="kanban-column-count" aria-label="Card count">
-          {countLabel}
+        {renaming ? (
+          <input
+            type="text"
+            className="column-rename-input"
+            value={renameValue}
+            autoFocus
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={onRenameKey}
+            onBlur={commitRename}
+            maxLength={40}
+            aria-label={`Rename column ${column.name}`}
+          />
+        ) : (
+          <button
+            type="button"
+            className="kanban-column-name-btn"
+            onClick={startRename}
+            aria-label={`Rename column: ${column.name}`}
+            title="Click to rename"
+          >
+            <h2 className="kanban-column-name">{column.name}</h2>
+          </button>
+        )}
+        <span className="kanban-column-meta">
+          <span className="kanban-column-count" aria-label="Card count">
+            {countLabel}
+          </span>
+          <button
+            type="button"
+            className="column-delete-btn"
+            onClick={handleDeleteColumn}
+            disabled={!canDeleteColumn}
+            aria-label={`Delete column: ${column.name}`}
+            title={canDeleteColumn ? 'Delete column' : 'Cannot delete last column'}
+          >
+            ✕
+          </button>
         </span>
       </header>
 
@@ -85,6 +174,7 @@ export function KanbanColumn({
               card={card}
               columnId={columnId}
               dispatch={dispatch}
+              onOpen={onOpenCard}
             />
           ))}
         </SortableContext>

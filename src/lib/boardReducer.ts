@@ -29,10 +29,20 @@ export type BoardAction =
       toColumnId: ColumnId
       toIndex: number
     }
+  | { type: 'RESTORE_CARD'; card: Card; columnId: ColumnId; atIndex: number }
+  | { type: 'ADD_COLUMN'; name: string }
+  | { type: 'RENAME_COLUMN'; columnId: ColumnId; name: string }
+  | { type: 'DELETE_COLUMN'; columnId: ColumnId }
   | { type: 'RESET' }
 
 function makeCardId(): CardId {
   return `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+}
+
+function makeColumnId(): ColumnId {
+  return `col-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 7)}`
 }
 
 function findColumnForCard(board: Board, cardId: CardId): ColumnId | undefined {
@@ -52,7 +62,11 @@ export function boardReducer(state: Board, action: BoardAction): Board {
         ...state,
         cards: {
           ...state.cards,
-          [id]: { id, title: action.title.trim() || 'Untitled' },
+          [id]: {
+            id,
+            title: action.title.trim() || 'Untitled',
+            createdAt: Date.now(),
+          },
         },
         columns: {
           ...state.columns,
@@ -122,6 +136,66 @@ export function boardReducer(state: Board, action: BoardAction): Board {
         newColumns[action.toColumnId] = { ...toCol, cardIds: targetIds }
       }
       return { ...state, columns: newColumns }
+    }
+
+    case 'ADD_COLUMN': {
+      const id = makeColumnId()
+      const name = action.name.trim() || 'New column'
+      return {
+        ...state,
+        columnIds: [...state.columnIds, id],
+        columns: {
+          ...state.columns,
+          [id]: { id, name, cardIds: [] },
+        },
+      }
+    }
+
+    case 'RENAME_COLUMN': {
+      const col = state.columns[action.columnId]
+      const trimmed = action.name.trim()
+      if (!col || !trimmed) return state
+      return {
+        ...state,
+        columns: {
+          ...state.columns,
+          [action.columnId]: { ...col, name: trimmed },
+        },
+      }
+    }
+
+    case 'DELETE_COLUMN': {
+      const col = state.columns[action.columnId]
+      if (!col) return state
+      // Never let the user delete the last column.
+      if (state.columnIds.length <= 1) return state
+      const newColumns = { ...state.columns }
+      delete newColumns[action.columnId]
+      const newCards = { ...state.cards }
+      for (const cid of col.cardIds) delete newCards[cid]
+      return {
+        ...state,
+        columnIds: state.columnIds.filter((id) => id !== action.columnId),
+        columns: newColumns,
+        cards: newCards,
+      }
+    }
+
+    case 'RESTORE_CARD': {
+      const col = state.columns[action.columnId]
+      if (!col) return state
+      if (state.cards[action.card.id]) return state // already exists
+      const newCardIds = [...col.cardIds]
+      const idx = Math.max(0, Math.min(action.atIndex, newCardIds.length))
+      newCardIds.splice(idx, 0, action.card.id)
+      return {
+        ...state,
+        cards: { ...state.cards, [action.card.id]: action.card },
+        columns: {
+          ...state.columns,
+          [action.columnId]: { ...col, cardIds: newCardIds },
+        },
+      }
     }
 
     case 'RESET':
